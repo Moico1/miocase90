@@ -1,10 +1,13 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Tabs, useRouter } from 'expo-router';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
+
+import { shadow } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 
 export default function TabLayout() {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
 
   const tabs = (
@@ -43,13 +46,13 @@ export default function TabLayout() {
             >
               <SymbolView
                 name={iconName}
-                tintColor={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                tintColor={focused ? c.primary : c.inkMuted}
                 size={24}
               />
               <Text
                 variant="labelSmall"
                 style={{
-                  color: focused ? theme.colors.primary : theme.colors.onSurfaceVariant,
+                  color: focused ? c.primary : c.inkMuted,
                   fontWeight: focused ? '700' : '500',
                 }}
               >
@@ -60,16 +63,15 @@ export default function TabLayout() {
         }
 
         return (
+          <View style={[styles.tabBarShell, { backgroundColor: c.background }]}>
           <View
             style={[
               styles.tabBar,
               {
-                backgroundColor: theme.colors.surface,
-                borderTopColor: theme.colors.outlineVariant,
-                elevation: 8,
+                backgroundColor: c.surface,
+                borderTopColor: c.border,
                 height: 64 + bottomInset,
                 paddingBottom: bottomInset,
-                zIndex: 1,
               },
             ]}
           >
@@ -80,25 +82,27 @@ export default function TabLayout() {
               onPress={() => router.push('/publish')}
               style={styles.tabButton}
             >
-              <View style={[styles.publishIcon, { backgroundColor: theme.colors.primary }]}>
+              <View style={[styles.publishIcon, shadow.floating, { backgroundColor: c.primary }]}>
                 <SymbolView
                   name={{ ios: 'plus', android: 'add', web: 'add' }}
-                  tintColor={theme.colors.onPrimary}
+                  tintColor={c.onPrimary}
                   size={24}
                 />
               </View>
-              <Text variant="labelSmall" style={{ color: theme.colors.primary, fontWeight: '700' }}>
+              <Text variant="labelSmall" style={{ color: c.primary, fontWeight: '700' }}>
                 Publicar
               </Text>
             </Pressable>
             {renderTab('two')}
           </View>
+          </View>
         );
       }}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+        sceneStyle: { backgroundColor: c.background },
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.inkMuted,
       }}
     >
       <Tabs.Screen
@@ -122,13 +126,19 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabBarShell: {
+    alignItems: 'center',
+    width: '100%',
+  },
   tabBar: {
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     justifyContent: 'space-around',
+    maxWidth: 1120,
     paddingHorizontal: 12,
     paddingTop: 6,
+    width: '100%',
   },
   tabButton: {
     alignItems: 'center',
@@ -139,9 +149,10 @@ const styles = StyleSheet.create({
   },
   publishIcon: {
     alignItems: 'center',
-    borderRadius: 18,
-    height: 34,
+    borderRadius: 999,
+    height: 58,
     justifyContent: 'center',
-    width: 52,
+    marginTop: -18,
+    width: 58,
   },
 });

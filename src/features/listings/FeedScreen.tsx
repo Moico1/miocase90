@@ -1,13 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Card, Chip, Searchbar, Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 import { BrandLogo } from '@/components/BrandLogo';
+import { AppButton } from '@/design/AppButton';
+import { Badge } from '@/design/Badge';
+import { Chip } from '@/design/Chip';
+import { EmptyState } from '@/design/EmptyState';
+import { ListingCard as ListingCardView } from '@/design/ListingCard';
+import { ScreenHeader } from '@/design/ScreenHeader';
+import { SectionHeader } from '@/design/SectionHeader';
+import { Skeleton } from '@/design/Skeleton';
+import { font, palette, radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { fetchFeaturedStores, getStoreLogoUrl } from '@/features/stores/storeQueries';
 import {
@@ -18,10 +37,15 @@ import {
   type ListingCard,
 } from './listingQueries';
 
+const CONTENT_MAX_WIDTH = 1120;
+
 export function FeedScreen() {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const { session } = useAuth();
+  const contentWidth = Math.min(windowWidth, CONTENT_MAX_WIDTH);
+  const cardWidth = Math.floor((contentWidth - 32 - space.md) / 2);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
@@ -67,76 +91,23 @@ export function FeedScreen() {
   }
 
   function renderListing({ item }: { item: ListingCard }) {
-    const storeId = item.storeId;
     return (
-      <Card
-        mode="outlined"
-        onPress={() => openListing(item)}
-        style={styles.card}
-        accessibilityLabel={`Ver ${item.title}`}
-      >
-        {item.thumbnailUrl ? (
-          <ExpoImage
-            source={{ uri: item.thumbnailUrl }}
-            cachePolicy="memory-disk"
-            contentFit="cover"
-            style={styles.thumbnail}
-            accessibilityLabel={`Foto de ${item.title}`}
-          />
-        ) : (
-          <View
-            style={[styles.thumbnail, styles.noImage, { backgroundColor: theme.colors.surfaceVariant }]}
-          >
-            <Text variant="bodyMedium">Sin foto</Text>
-          </View>
-        )}
-        <Card.Content style={styles.cardContent}>
-          <Text variant="titleMedium" numberOfLines={2}>
-            {item.title}
-          </Text>
-          <Text variant="titleLarge" style={[styles.price, { color: theme.colors.primary }]}>
-            {formatListingPrice(item.price, item.currency)}
-          </Text>
-          {item.previousPrice !== null ? (
-            <View style={styles.offerRow}>
-              <Text variant="bodySmall" style={styles.previousPrice}>
-                {formatListingPrice(item.previousPrice, item.currency)}
-              </Text>
-              <Chip compact selectedColor={theme.colors.onSecondaryContainer} style={{ backgroundColor: theme.colors.secondaryContainer }}>
-                -{Math.round((1 - item.price / item.previousPrice) * 100)}%
-              </Chip>
-            </View>
-          ) : null}
-          {item.status === 'sold' ? (
-            <Chip compact selected>
-              Vendido
-            </Chip>
-          ) : null}
-          {item.isNew ? <Chip compact>Nuevo</Chip> : null}
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {item.categoryName}
-          </Text>
-          {storeId ? (
-            <Pressable
-              onPress={(event) => {
-                event.stopPropagation();
-                router.push({ pathname: '/store/[id]', params: { id: storeId } });
-              }}
-              style={styles.storeLink}
-            >
-              {item.storeLogoUrl ? (
-                <ExpoImage
-                  source={{ uri: item.storeLogoUrl }}
-                  style={styles.storeLogo}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
-              ) : null}
-              <Text variant="labelSmall" numberOfLines={1}>{item.storeName}</Text>
-            </Pressable>
-          ) : null}
-        </Card.Content>
-      </Card>
+      <ListingCardView
+        listing={item}
+        priceLabel={formatListingPrice(item.price, item.currency)}
+        previousPriceLabel={
+          item.previousPrice !== null
+            ? formatListingPrice(item.previousPrice, item.currency)
+            : undefined
+        }
+        onOpen={() => openListing(item)}
+        onOpenStore={() => {
+          if (item.storeId) {
+            router.push({ pathname: '/store/[id]', params: { id: item.storeId } });
+          }
+        }}
+        style={{ width: cardWidth }}
+      />
     );
   }
 
@@ -145,16 +116,16 @@ export function FeedScreen() {
       return (
         <View style={styles.skeletonGrid} accessibilityLabel="Cargando publicaciones">
           {Array.from({ length: 4 }, (_, index) => (
-            <View
+            <Skeleton
               key={index}
-              style={[styles.skeletonCard, { backgroundColor: theme.colors.surface }]}
+              style={[styles.skeletonCard, { width: cardWidth }]}
             >
-              <View style={[styles.skeletonImage, { backgroundColor: theme.colors.surfaceVariant }]} />
+              <View style={[styles.skeletonImage, { backgroundColor: c.border }]} />
               <View style={styles.skeletonText}>
-                <View style={[styles.skeletonLine, { backgroundColor: theme.colors.surfaceVariant }]} />
-                <View style={[styles.skeletonShortLine, { backgroundColor: theme.colors.surfaceVariant }]} />
+                <View style={[styles.skeletonLine, { backgroundColor: c.border }]} />
+                <View style={[styles.skeletonShortLine, { backgroundColor: c.border }]} />
               </View>
-            </View>
+            </Skeleton>
           ))}
         </View>
       );
@@ -162,342 +133,455 @@ export function FeedScreen() {
 
     if (feedQuery.isError) {
       return (
-        <View style={styles.state}>
-          <Text variant="bodyMedium">
-            No se pudieron cargar las publicaciones. Comprueba tu conexión e inténtalo otra vez.
-          </Text>
-          <Button mode="outlined" onPress={() => void feedQuery.refetch()}>
-            Reintentar
-          </Button>
-        </View>
+        <EmptyState
+          title="No se pudieron cargar las publicaciones"
+          message="Comprueba tu conexión e inténtalo otra vez."
+          icon="wifi-alert"
+          actionLabel="Reintentar"
+          onAction={() => void feedQuery.refetch()}
+        />
       );
     }
 
     return (
-      <View style={styles.state}>
-        <Text variant="bodyMedium">
-          {debouncedSearch || categoryId !== null
+      <EmptyState
+        title={debouncedSearch || categoryId !== null ? 'Sin resultados' : 'Aún no hay ofertas'}
+        message={
+          debouncedSearch || categoryId !== null
             ? 'No encontramos productos con esos filtros.'
-            : 'Aún no hay publicaciones activas.'}
-        </Text>
-      </View>
+            : 'Cuando haya publicaciones activas, aparecerán aquí.'
+        }
+      />
     );
   }
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <FlatList
-        data={listings}
-        numColumns={2}
-        columnWrapperStyle={styles.cardRow}
-        keyExtractor={(item) => item.id}
-        renderItem={renderListing}
-        contentContainerStyle={listings.length ? styles.list : styles.emptyList}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.brandHeading}>
-              <BrandLogo variant="compact" />
-              <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
-                YACUIBA · BUENO, BONITO, BARATO
-              </Text>
-            </View>
-            <View style={styles.headingRow}>
-              <View style={styles.heading}>
-                <Text variant="headlineSmall">Encuentra tu próxima oferta</Text>
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  Compra y vende dentro de la comunidad.
-                </Text>
+    <SafeAreaView
+      edges={['top', 'left', 'right', 'bottom']}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
+    >
+      <View style={styles.frame}>
+        <FlatList
+          data={listings}
+          numColumns={2}
+          columnWrapperStyle={styles.cardRow}
+          keyExtractor={(item) => item.id}
+          renderItem={renderListing}
+          style={styles.listFlex}
+          contentContainerStyle={listings.length ? styles.list : styles.emptyList}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <View style={styles.brandHeader}>
+                <View style={styles.brandRow}>
+                  <BrandLogo variant="compact" />
+                  <Text style={[styles.tagline, { color: c.inkMuted }]}>
+                    Bueno, bonito, barato
+                  </Text>
+                </View>
+                <View style={[styles.locationChip, { backgroundColor: c.surfaceMuted }]}>
+                  <MaterialCommunityIcons name="map-marker" size={14} color={c.primary} />
+                  <Text style={[styles.locationLabel, { color: c.primary }]}>Yacuiba, BO</Text>
+                </View>
               </View>
-              <Button
-                mode="contained"
-                contentStyle={styles.publishButtonContent}
-                icon={({ color, size }) => (
-                  <SymbolView
-                    name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }}
-                    tintColor={color}
-                    size={size}
+              <View style={styles.brandStripe}>
+                <View style={{ backgroundColor: palette.red, flex: 1 }} />
+                <View style={{ backgroundColor: palette.yellow, flex: 1 }} />
+                <View style={{ backgroundColor: palette.green, flex: 1 }} />
+              </View>
+              <ScreenHeader title="Encuentra tu próxima oferta" />
+              <View style={styles.searchRow}>
+                <View
+                  style={[
+                    styles.searchBox,
+                    { backgroundColor: c.surface, borderColor: c.border },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="magnify" size={24} color={c.inkMuted} />
+                  <TextInput
+                    accessibilityLabel="Buscar productos por texto"
+                    placeholder="Buscar productos"
+                    placeholderTextColor={c.inkMuted}
+                    maxLength={80}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    returnKeyType="search"
+                    style={[styles.searchInput, { color: c.ink }]}
+                  />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ordenar productos. Orden actual: ${
+                    sortOrder === 'recent' ? 'más recientes' : 'más baratos'
+                  }`}
+                  onPress={() =>
+                    setSortOrder((current) => (current === 'recent' ? 'cheapest' : 'recent'))
+                  }
+                  style={({ pressed }) => [
+                    styles.sortButton,
+                    {
+                      backgroundColor: c.surface,
+                      borderColor: c.border,
+                      opacity: pressed ? 0.8 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="sort-variant" size={22} color={c.primary} />
+                </Pressable>
+              </View>
+              {categories.isError ? (
+                <Text style={[styles.statusMessage, { color: c.danger }]}>
+                  No se pudieron cargar las categorías. Puedes seguir viendo todas las ofertas.
+                </Text>
+              ) : null}
+              {feedQuery.isError && listings.length > 0 ? (
+                <Text style={[styles.statusMessage, { color: c.danger }]}>
+                  No se pudieron actualizar las ofertas. Se muestran los resultados guardados.
+                </Text>
+              ) : null}
+              <FlatList
+                horizontal
+                data={categories.data ?? []}
+                keyExtractor={(category) => String(category.id)}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipList}
+                ListHeaderComponent={
+                  <Chip
+                    label="Todas"
+                    selected={categoryId === null}
+                    onPress={() => setCategoryId(null)}
+                  />
+                }
+                renderItem={({ item: category }) => (
+                  <Chip
+                    label={category.name}
+                    selected={categoryId === category.id}
+                    onPress={() =>
+                      setCategoryId((current) => (current === category.id ? null : category.id))
+                    }
                   />
                 )}
-                onPress={() => router.push('/publish')}
-              >
-                Publicar
-              </Button>
-            </View>
-            <Searchbar
-              placeholder="Buscar productos"
-              maxLength={80}
-              value={searchText}
-              onChangeText={setSearchText}
-              accessibilityLabel="Buscar productos por texto"
-            />
-            {categories.isError ? (
-              <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-                No se pudieron cargar las categorías. Puedes seguir viendo todas las ofertas.
-              </Text>
-            ) : null}
-            {feedQuery.isError && listings.length > 0 ? (
-              <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-                No se pudieron actualizar las ofertas. Se muestran los resultados guardados.
-              </Text>
-            ) : null}
-            <FlatList
-              horizontal
-              data={categories.data ?? []}
-              keyExtractor={(category) => String(category.id)}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipList}
-              ListHeaderComponent={
-                <Chip selected={categoryId === null} onPress={() => setCategoryId(null)}>
-                  Todas
-                </Chip>
-              }
-              renderItem={({ item: category }) => (
+              />
+              {featuredStores.data?.length ? (
+                <View style={styles.featuredSection}>
+                  <SectionHeader title="Tiendas destacadas" />
+                  <FlatList
+                    horizontal
+                    data={featuredStores.data}
+                    keyExtractor={(store) => store.id}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.featuredList}
+                    renderItem={({ item: store }) => {
+                      const logoUrl = getStoreLogoUrl(store.logo_path);
+                      return (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Ver tienda ${store.name}`}
+                          onPress={() =>
+                            router.push({ pathname: '/store/[id]', params: { id: store.id } })
+                          }
+                          style={({ pressed }) => [
+                            styles.featuredStore,
+                            { opacity: pressed ? 0.8 : 1 },
+                          ]}
+                        >
+                          <View style={[styles.featuredAvatar, { borderColor: c.primary }]}>
+                            {logoUrl ? (
+                              <ExpoImage
+                                source={{ uri: logoUrl }}
+                                style={styles.featuredLogo}
+                                contentFit="cover"
+                                cachePolicy="memory-disk"
+                              />
+                            ) : (
+                              <Text style={[styles.avatarLetter, { color: c.primary }]}>
+                                {store.name.slice(0, 1).toLocaleUpperCase()}
+                              </Text>
+                            )}
+                            <View
+                              style={[styles.verifiedBadge, { backgroundColor: c.surface }]}
+                              accessibilityLabel="Tienda verificada"
+                            >
+                              <MaterialCommunityIcons
+                                name="check-decagram"
+                                size={18}
+                                color={c.primary}
+                              />
+                            </View>
+                          </View>
+                          <Text
+                            numberOfLines={1}
+                            style={[styles.featuredName, { color: c.ink }]}
+                          >
+                            {store.name}
+                          </Text>
+                          {store.review_count === 0 ? (
+                            <Badge
+                              label="Nueva tienda"
+                              backgroundColor={c.accent}
+                              color={c.onAccent}
+                            />
+                          ) : (
+                            <Text style={[styles.rating, { color: c.inkMuted }]}>
+                              ★ {store.rating_average.toFixed(1)}
+                            </Text>
+                          )}
+                        </Pressable>
+                      );
+                    }}
+                  />
+                </View>
+              ) : null}
+              <View style={styles.feedSection}>
                 <Chip
-                  selected={categoryId === category.id}
-                  onPress={() =>
-                    setCategoryId((current) => (current === category.id ? null : category.id))
-                  }
-                >
-                  {category.name}
-                </Chip>
-              )}
-            />
-            <View style={styles.sortOptions}>
-              <Chip
-                selected={Boolean(session?.user.id && followedOnly)}
-                disabled={!session?.user.id}
-                onPress={() => setFollowedOnly((current) => !current)}
-              >
-                Tiendas que sigo
-              </Chip>
+                  label="Tiendas que sigo"
+                  selected={Boolean(session?.user.id && followedOnly)}
+                  disabled={!session?.user.id}
+                  onPress={() => setFollowedOnly((current) => !current)}
+                />
+                <SectionHeader title="Ofertas para ti" />
+              </View>
             </View>
-            {featuredStores.data?.length ? (
-              <View style={styles.featuredSection}>
-                <Text variant="titleMedium">Tiendas destacadas</Text>
-                <FlatList
-                  horizontal
-                  data={featuredStores.data}
-                  keyExtractor={(store) => store.id}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chipList}
-                  renderItem={({ item: store }) => {
-                    const logoUrl = getStoreLogoUrl(store.logo_path);
-                    return (
-                      <Pressable
-                        onPress={() => router.push({ pathname: '/store/[id]', params: { id: store.id } })}
-                        style={[styles.featuredStore, { backgroundColor: theme.colors.surface }]}
-                      >
-                        {logoUrl ? (
-                          <ExpoImage
-                            source={{ uri: logoUrl }}
-                            style={styles.featuredLogo}
-                            contentFit="cover"
-                            cachePolicy="memory-disk"
-                          />
-                        ) : null}
-                        <Text variant="labelMedium" numberOfLines={1}>{store.name}</Text>
-                        <Text variant="labelSmall">★ {store.rating_average.toFixed(1)}</Text>
-                      </Pressable>
-                    );
-                  }}
+          }
+          ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={
+            feedQuery.isFetchingNextPage ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={c.primary} />
+                <Text style={[styles.statusMessage, { color: c.inkMuted }]}>
+                  Cargando más productos…
+                </Text>
+              </View>
+            ) : feedQuery.isFetchNextPageError ? (
+              <View style={styles.footer}>
+                <Text style={[styles.statusMessage, { color: c.danger }]}>
+                  No se pudieron cargar más productos. Comprueba tu conexión.
+                </Text>
+                <AppButton
+                  label="Reintentar"
+                  variant="secondary"
+                  onPress={() => void feedQuery.fetchNextPage()}
                 />
               </View>
-            ) : null}
-            <View style={styles.sortOptions}>
-              <Chip
-                selected={sortOrder === 'recent'}
-                onPress={() => setSortOrder('recent')}
-              >
-                Más recientes
-              </Chip>
-              <Chip
-                selected={sortOrder === 'cheapest'}
-                onPress={() => setSortOrder('cheapest')}
-              >
-                Más baratos
-              </Chip>
-            </View>
-          </View>
-        }
-        ListEmptyComponent={renderEmptyState}
-        ListFooterComponent={
-          feedQuery.isFetchingNextPage ? (
-            <View style={styles.footer}>
-              <ActivityIndicator />
-              <Text variant="bodySmall">Cargando más productos…</Text>
-            </View>
-          ) : feedQuery.isFetchNextPageError ? (
-            <View style={styles.footer}>
-              <Text variant="bodySmall">
-                No se pudieron cargar más productos. Comprueba tu conexión.
-              </Text>
-              <Button mode="outlined" onPress={() => void feedQuery.fetchNextPage()}>
-                Reintentar
-              </Button>
-            </View>
-          ) : undefined
-        }
-        onEndReached={() => {
-          if (
-            feedQuery.hasNextPage &&
-            !feedQuery.isFetchingNextPage &&
-            !feedQuery.isFetchNextPageError
-          ) {
-            void feedQuery.fetchNextPage();
+            ) : undefined
           }
-        }}
-        onEndReachedThreshold={0.45}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => void feedQuery.refetch()}
-          />
-        }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+          onEndReached={() => {
+            if (
+              feedQuery.hasNextPage &&
+              !feedQuery.isFetchingNextPage &&
+              !feedQuery.isFetchNextPageError
+            ) {
+              void feedQuery.fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.45}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => void feedQuery.refetch()}
+              tintColor={c.primary}
+              colors={[c.primary]}
+            />
+          }
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  frame: {
+    flex: 1,
+    maxWidth: CONTENT_MAX_WIDTH,
+    width: '100%',
+  },
+  brandRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.sm,
+  },
+  brandHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 48,
+  },
+  tagline: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  locationChip: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    gap: space.xs,
+    minHeight: 32,
+    paddingHorizontal: space.sm,
+  },
+  locationLabel: {
+    fontFamily: font.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  brandStripe: {
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    height: 3,
+    overflow: 'hidden',
+  },
+  searchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.sm,
+  },
+  searchBox: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    flex: 1,
+    flexDirection: 'row',
+    gap: space.sm,
+    minHeight: 52,
+    paddingHorizontal: space.lg,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: font.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    minHeight: 48,
+    paddingVertical: 0,
+  },
+  sortButton: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    minHeight: 52,
+    width: 52,
+  },
+  listFlex: {
     flex: 1,
   },
   header: {
-    gap: 14,
-    padding: 16,
-  },
-  brandHeading: {
-    alignItems: 'flex-start',
-    gap: 3,
-  },
-  sortOptions: {
-    flexDirection: 'row',
-    gap: 8,
+    gap: space.lg,
+    paddingBottom: space.lg,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
   },
   featuredSection: {
-    gap: 8,
+    gap: space.sm,
+  },
+  featuredList: {
+    alignItems: 'flex-start',
+    gap: space.md,
   },
   featuredStore: {
     alignItems: 'center',
-    borderRadius: 12,
-    gap: 4,
-    minWidth: 100,
-    padding: 10,
+    gap: space.xs,
+    minHeight: 120,
+    width: 88,
+  },
+  featuredAvatar: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
   },
   featuredLogo: {
-    borderRadius: 24,
-    height: 48,
-    width: 48,
+    borderRadius: radius.pill,
+    height: 50,
+    width: 50,
   },
-  storeLink: {
+  avatarLetter: {
+    fontFamily: font.heavy,
+    fontSize: 22,
+  },
+  verifiedBadge: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    paddingTop: 4,
+    borderRadius: radius.pill,
+    height: 22,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -5,
+    top: -5,
+    width: 22,
   },
-  storeLogo: {
-    borderRadius: 12,
-    height: 24,
-    width: 24,
+  featuredName: {
+    fontFamily: font.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
+    width: '100%',
   },
-  offerRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
+  rating: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    lineHeight: 16,
   },
-  previousPrice: {
-    textDecorationLine: 'line-through',
-  },
-  publishButtonContent: {
-    minHeight: 48,
-  },
-  headingRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'space-between',
-  },
-  heading: {
-    flex: 1,
-    gap: 4,
+  feedSection: {
+    gap: space.sm,
   },
   chipList: {
     alignItems: 'center',
-    gap: 8,
+    gap: space.sm,
   },
   list: {
-    paddingBottom: 20,
+    paddingBottom: space.xl,
   },
   emptyList: {
     flexGrow: 1,
   },
   cardRow: {
-    gap: 12,
-    paddingHorizontal: 16,
-  },
-  card: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  thumbnail: {
-    height: 148,
-    width: '100%',
-  },
-  noImage: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardContent: {
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  price: {
-    fontWeight: '800',
+    alignItems: 'flex-start',
+    gap: space.md,
+    paddingHorizontal: space.lg,
   },
   separator: {
-    height: 14,
+    height: space.md,
   },
-  state: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-    justifyContent: 'center',
-    padding: 24,
+  statusMessage: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
   },
   footer: {
     alignItems: 'center',
-    gap: 8,
-    padding: 20,
+    gap: space.sm,
+    padding: space.xl,
   },
   skeletonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    paddingHorizontal: 16,
+    gap: space.md,
+    paddingHorizontal: space.lg,
   },
   skeletonCard: {
-    borderColor: '#75827933',
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexBasis: '48%',
+    borderRadius: radius.lg,
     overflow: 'hidden',
   },
   skeletonImage: {
-    height: 148,
+    aspectRatio: 4 / 5,
   },
   skeletonText: {
-    gap: 10,
-    padding: 12,
+    gap: space.sm,
+    padding: space.md,
   },
   skeletonLine: {
-    borderRadius: 6,
-    height: 15,
+    borderRadius: radius.sm,
+    height: 14,
     width: '90%',
   },
   skeletonShortLine: {
-    borderRadius: 6,
+    borderRadius: radius.sm,
     height: 18,
     width: '55%',
   },

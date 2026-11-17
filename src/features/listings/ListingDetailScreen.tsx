@@ -3,22 +3,25 @@ import { Linking, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimen
 import * as ExpoLinking from 'expo-linking';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image as ExpoImage } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
-  Button,
-  Chip,
+  Card,
   Dialog,
   HelperText,
   Portal,
   RadioButton,
   Text,
-  useTheme,
 } from 'react-native-paper';
 
 import { AccountRequiredSheet } from '@/features/auth/AccountRequiredSheet';
+import { AppButton } from '@/design/AppButton';
+import { Badge } from '@/design/Badge';
+import { EmptyState } from '@/design/EmptyState';
+import { font, palette, radius, shadow, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ReportDialog } from '@/features/reports/ReportDialog';
 import { ListingComments } from './ListingComments';
@@ -31,12 +34,13 @@ import {
 type ListingAction = 'contact' | 'favorite' | 'report' | 'rate';
 
 export function ListingDetailScreen({ listingId }: { listingId: string }) {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const params = useLocalSearchParams<{ resume?: string | string[] }>();
   const { width } = useWindowDimensions();
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isReportVisible, setIsReportVisible] = useState(false);
   const [reportSent, setReportSent] = useState(false);
   const [whatsappError, setWhatsappError] = useState<string | null>(null);
@@ -237,8 +241,8 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
 
   if (detail.isPending) {
     return (
-      <SafeAreaView style={styles.state}>
-        <ActivityIndicator />
+      <SafeAreaView style={[styles.state, { backgroundColor: c.background }]}>
+        <ActivityIndicator color={c.primary} />
         <Text variant="bodyMedium">Cargando producto…</Text>
       </SafeAreaView>
     );
@@ -246,23 +250,27 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
 
   if (detail.isError) {
     return (
-      <SafeAreaView style={styles.state}>
-        <Text variant="bodyMedium">
-          No se pudo cargar el producto. Comprueba tu conexión e inténtalo otra vez.
-        </Text>
-        <Button mode="outlined" onPress={() => void detail.refetch()}>
-          Reintentar
-        </Button>
-        <Button onPress={() => router.back()}>Volver</Button>
+      <SafeAreaView style={[styles.state, { backgroundColor: c.background }]}>
+        <EmptyState
+          title="No se pudo cargar el producto"
+          message="Comprueba tu conexión e inténtalo otra vez."
+          actionLabel="Reintentar"
+          onAction={() => void detail.refetch()}
+        />
+        <AppButton label="Volver" variant="secondary" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
 
   if (!detail.data) {
     return (
-      <SafeAreaView style={styles.state}>
-        <Text variant="bodyMedium">Este producto ya no está disponible.</Text>
-        <Button onPress={() => router.back()}>Volver a las ofertas</Button>
+      <SafeAreaView style={[styles.state, { backgroundColor: c.background }]}>
+        <EmptyState
+          title="Este producto ya no está disponible"
+          message="Puedes volver a las ofertas para encontrar algo que te guste."
+          actionLabel="Volver a las ofertas"
+          onAction={() => router.back()}
+        />
       </SafeAreaView>
     );
   }
@@ -272,157 +280,192 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
   const canShowListingActions = !session?.user.id || !product.isOwnListing;
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView
+      edges={['left', 'right', 'bottom']}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
+    >
       <ScrollView contentContainerStyle={styles.content}>
-        <Button
+        <AppButton
+          label="Volver a las ofertas"
+          variant="secondary"
           onPress={() => router.back()}
-          style={styles.backButton}
-          accessibilityLabel="Volver a las ofertas"
-        >
-          Volver
-        </Button>
-        <Button mode="outlined" onPress={() => void shareListing()}>
-          Compartir producto
-        </Button>
+        />
         {product.photos.length > 0 ? (
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            style={styles.photoCarousel}
-          >
-            {product.photos.map((photo) => (
-              <ExpoImage
-                key={photo.path}
-                source={{ uri: photo.url }}
-                cachePolicy="memory-disk"
-                contentFit="contain"
-                style={[styles.photo, { width: width - 32 }]}
-                accessibilityLabel={`Foto ${photo.position} de ${product.title}`}
-              />
-            ))}
-          </ScrollView>
+          <>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.photoCarousel}
+              onMomentumScrollEnd={(event) => {
+                setActivePhotoIndex(
+                  Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width - 32))
+                );
+              }}
+            >
+              {product.photos.map((photo) => (
+                <ExpoImage
+                  key={photo.path}
+                  source={{ uri: photo.url }}
+                  cachePolicy="memory-disk"
+                  contentFit="cover"
+                  style={[styles.photo, { width: width - 32 }]}
+                  accessibilityLabel={`Foto ${photo.position} de ${product.title}`}
+                />
+              ))}
+            </ScrollView>
+            {product.photos.length > 1 ? (
+              <View
+                style={styles.photoPagination}
+                accessibilityLabel={`Foto ${activePhotoIndex + 1} de ${product.photos.length}`}
+              >
+                {product.photos.map((photo, index) => (
+                  <View
+                    key={photo.path}
+                    style={[
+                      styles.photoDot,
+                      {
+                        backgroundColor: activePhotoIndex === index ? c.primary : c.border,
+                        width: activePhotoIndex === index ? 20 : 6,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </>
         ) : (
-          <View
-            style={[
-              styles.noPhoto,
-              { backgroundColor: theme.colors.surfaceVariant, width: width - 32 },
-            ]}
-          >
-            <Text variant="bodyMedium">Este producto no tiene fotos.</Text>
+          <View style={[styles.noPhoto, { backgroundColor: c.surfaceMuted, width: width - 32 }]}>
+            <MaterialCommunityIcons name="image-off-outline" size={40} color={c.inkMuted} />
+            <Text style={{ color: c.inkMuted }}>Este producto no tiene fotos.</Text>
           </View>
         )}
-        {product.photos.length > 1 ? (
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            Desliza para ver las {product.photos.length} fotos.
-          </Text>
-        ) : null}
-        <Text variant="headlineSmall" style={styles.title}>
-          {product.title}
-        </Text>
-        <Text variant="displaySmall" style={[styles.price, { color: theme.colors.primary }]}>
+        <Text style={[styles.title, { color: c.ink }]}>{product.title}</Text>
+        <Text style={[styles.price, { color: c.primary }]}>
           {formatListingPrice(product.price, product.currency)}
         </Text>
         {product.previousPrice !== null ? (
           <View style={styles.offerRow}>
-            <Text variant="bodyMedium" style={styles.previousPrice}>
+            <Text style={[styles.previousPrice, { color: c.inkMuted }]}>
               {formatListingPrice(product.previousPrice, product.currency)}
             </Text>
-            <Chip compact>
-              -{Math.round((1 - product.price / product.previousPrice) * 100)}%
-            </Chip>
+            <Badge
+              label={`-${Math.round((1 - product.price / product.previousPrice) * 100)}%`}
+              backgroundColor={c.danger}
+              color={c.onDanger}
+            />
           </View>
         ) : null}
-        {product.status === 'sold' ? <Chip compact>Vendido</Chip> : null}
-        {product.isNew ? <Chip compact>Nuevo</Chip> : null}
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+        <View style={styles.badges}>
+          {product.status === 'sold' ? (
+            <Badge label="Vendido" backgroundColor={c.ink} color={c.background} />
+          ) : null}
+          {product.isNew ? (
+            <Badge label="Nuevo" backgroundColor={c.accent} color={c.onAccent} />
+          ) : null}
+        </View>
+        <Text variant="bodyMedium" style={{ color: c.inkMuted }}>
           Categoría: {product.categoryName}
         </Text>
-        <Text variant="titleMedium">Descripción</Text>
-        <Text variant="bodyLarge">{product.description || 'El vendedor no agregó una descripción.'}</Text>
+        <Card mode="contained" style={[styles.descriptionCard, { backgroundColor: c.surface }]}>
+          <Card.Content style={styles.descriptionContent}>
+            <Text variant="titleMedium">Descripción</Text>
+            <Text variant="bodyLarge">
+              {product.description || 'El vendedor no agregó una descripción.'}
+            </Text>
+          </Card.Content>
+        </Card>
         {storeId ? (
           <Pressable
             onPress={() => router.push({ pathname: '/store/[id]', params: { id: storeId } })}
-            style={styles.storeLink}
+            style={[
+              styles.storeCard,
+              { backgroundColor: c.surface, borderColor: c.border },
+              shadow.card,
+            ]}
           >
-            {product.storeLogoUrl ? (
-              <ExpoImage
-                source={{ uri: product.storeLogoUrl }}
-                style={styles.storeLogo}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                accessibilityLabel={`Logo de ${product.storeName}`}
+            <View style={[styles.storeAvatar, { backgroundColor: c.surfaceMuted }]}>
+              {product.storeLogoUrl ? (
+                <ExpoImage
+                  source={{ uri: product.storeLogoUrl }}
+                  style={styles.storeLogo}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  accessibilityLabel={`Logo de ${product.storeName}`}
+                />
+              ) : (
+                <Text style={[styles.storeInitial, { color: c.primary }]}>
+                  {product.storeName.slice(0, 1).toLocaleUpperCase()}
+                </Text>
+              )}
+            </View>
+            <View style={styles.storeInfo}>
+              <Text variant="titleSmall" numberOfLines={1}>{product.storeName}</Text>
+              <Badge
+                label="Vendedor verificado"
+                backgroundColor={palette.greenSoft}
+                color={c.primary}
               />
-            ) : null}
-            <Text variant="bodyMedium" style={{ color: theme.colors.primary }}>
-              Tienda: {product.storeName}
-            </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={c.inkMuted} />
           </Pressable>
         ) : (
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          <Text variant="bodyMedium" style={{ color: c.inkMuted }}>
             Publicado por {product.sellerName}
           </Text>
         )}
-        <View
-          style={[
-            styles.safetyBox,
-            { backgroundColor: theme.colors.secondaryContainer },
-          ]}
-        >
-          <SymbolView
-            name={{ ios: 'exclamationmark.shield.fill', android: 'shield', web: 'shield' }}
-            tintColor={theme.colors.onSecondaryContainer}
-            size={24}
-          />
+        <View style={[styles.safetyBox, { backgroundColor: palette.yellowSoft }]}>
+          <MaterialCommunityIcons name="shield-alert" color={c.onAccent} size={24} />
           <View style={styles.safetyText}>
-            <Text variant="titleSmall" style={{ color: theme.colors.onSecondaryContainer }}>
+            <Text variant="titleSmall" style={{ color: c.onAccent }}>
               Compra con cuidado
             </Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSecondaryContainer }}>
+            <Text variant="bodyMedium" style={{ color: c.onAccent }}>
               No pagues por adelantado, reúnete en lugares públicos.
             </Text>
           </View>
         </View>
         {product.status === 'active' && canShowListingActions ? (
-          <Button
-            mode="contained"
+          <AppButton
+            label="Contactar por WhatsApp"
             loading={isContacting}
             disabled={isContacting}
-            contentStyle={styles.whatsappButton}
-            icon={({ color, size }) => (
-              <SymbolView
-                name={{ ios: 'message.fill', android: 'chat', web: 'chat' }}
-                tintColor={color}
-                size={size}
-              />
-            )}
             onPress={() => void contactSeller()}
-          >
-            Contactar por WhatsApp
-          </Button>
+          />
         ) : null}
         {whatsappError ? (
-          <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
+          <Text accessibilityRole="alert" style={{ color: c.danger }}>
             {whatsappError}
           </Text>
         ) : null}
         {canShowListingActions ? (
           <View style={styles.actions}>
-            <Button mode={favoriteQuery.data ? 'contained-tonal' : 'outlined'} onPress={() => void toggleFavorite()}>
-              {favoriteQuery.data ? 'Quitar de favoritos' : 'Guardar favorito'}
-            </Button>
-            <Button mode="text" onPress={startRating}>
-              {ratingQuery.data ? `Tu calificación: ${ratingQuery.data} ★` : 'Calificar'}
-            </Button>
+            <AppButton
+              label={favoriteQuery.data ? 'Quitar de favoritos' : 'Guardar favorito'}
+              variant="secondary"
+              onPress={() => void toggleFavorite()}
+            />
+            <AppButton
+              label={ratingQuery.data ? `Tu calificación: ${ratingQuery.data} ★` : 'Calificar'}
+              variant="secondary"
+              onPress={startRating}
+            />
+            <AppButton
+              label="Compartir producto"
+              variant="secondary"
+              onPress={() => void shareListing()}
+            />
             {!reportSent ? (
-              <Button mode="text" onPress={startReport}>
-                Reportar publicación
-              </Button>
+              <AppButton
+                label="Reportar publicación"
+                variant="secondary"
+                onPress={startReport}
+              />
             ) : null}
           </View>
         ) : null}
         {actionError ? (
-          <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
+          <Text accessibilityRole="alert" style={{ color: c.danger }}>
             {actionError}
           </Text>
         ) : null}
@@ -441,7 +484,11 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
         ) : null}
         {session?.user.id && !product.isOwnListing ? (
           <Portal>
-            <Dialog visible={isRatingVisible} onDismiss={() => setIsRatingVisible(false)}>
+            <Dialog
+              visible={isRatingVisible}
+              onDismiss={() => setIsRatingVisible(false)}
+              style={[styles.dialog, { backgroundColor: c.surface }]}
+            >
               <Dialog.Title>Califica esta publicación</Dialog.Title>
               <Dialog.Content>
                 <Text variant="bodyMedium">¿Qué te pareció esta compra?</Text>
@@ -463,10 +510,14 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
                   </HelperText>
                 ) : null}
               </Dialog.Content>
-              <Dialog.Actions>
-                <Button onPress={() => setIsRatingVisible(false)}>Cancelar</Button>
-                <Button onPress={() => void submitRating()}>Guardar</Button>
-              </Dialog.Actions>
+              <View style={styles.dialogActions}>
+                <AppButton
+                  label="Cancelar"
+                  variant="secondary"
+                  onPress={() => setIsRatingVisible(false)}
+                />
+                <AppButton label="Guardar" onPress={() => void submitRating()} />
+              </View>
             </Dialog>
           </Portal>
         ) : null}
@@ -486,27 +537,73 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 12,
-    padding: 16,
+    gap: space.lg,
+    padding: space.lg,
   },
   title: {
-    fontWeight: '700',
-    marginTop: 8,
+    fontFamily: font.brand,
+    fontSize: 26,
+    lineHeight: 34,
   },
   price: {
-    fontWeight: '800',
-    marginVertical: 4,
+    fontFamily: font.heavy,
+    fontSize: 28,
+    lineHeight: 36,
   },
   offerRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: space.sm,
   },
   previousPrice: {
+    fontFamily: font.regular,
+    fontSize: 15,
+    lineHeight: 22,
     textDecorationLine: 'line-through',
   },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+  },
+  descriptionCard: {
+    borderRadius: radius.lg,
+  },
+  descriptionContent: {
+    gap: space.sm,
+    padding: space.lg,
+  },
+  storeCard: {
+    alignItems: 'center',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: space.md,
+    minHeight: 80,
+    padding: space.md,
+  },
+  storeAvatar: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  storeLogo: {
+    borderRadius: radius.pill,
+    height: 48,
+    width: 48,
+  },
+  storeInitial: {
+    fontFamily: font.heavy,
+    fontSize: 22,
+  },
+  storeInfo: {
+    flex: 1,
+    gap: space.xs,
+  },
   actions: {
-    gap: 4,
+    gap: space.sm,
   },
   ratingOptions: {
     flexDirection: 'row',
@@ -514,54 +611,59 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   ratingOption: {
+    minHeight: 48,
     paddingHorizontal: 0,
     width: '20%',
-  },
-  backButton: {
-    alignSelf: 'flex-start',
   },
   photoCarousel: {
     marginHorizontal: -16,
   },
   photo: {
-    height: 320,
+    aspectRatio: 1,
   },
   noPhoto: {
     alignItems: 'center',
-    height: 240,
+    aspectRatio: 1,
+    gap: space.sm,
     justifyContent: 'center',
+  },
+  photoPagination: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.sm,
+    justifyContent: 'center',
+  },
+  photoDot: {
+    borderRadius: radius.pill,
+    height: 6,
   },
   safetyBox: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: radius.lg,
     flexDirection: 'row',
-    gap: 12,
-    marginVertical: 8,
-    padding: 16,
+    gap: space.md,
+    padding: space.lg,
   },
   safetyText: {
     flex: 1,
-    gap: 4,
-  },
-  whatsappButton: {
-    minHeight: 54,
-  },
-  storeLink: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 6,
-  },
-  storeLogo: {
-    borderRadius: 16,
-    height: 32,
-    width: 32,
+    gap: space.xs,
   },
   state: {
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: space.lg,
     justifyContent: 'center',
-    padding: 24,
+    padding: space.xl,
+  },
+  dialog: {
+    borderRadius: radius.xl,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    justifyContent: 'flex-end',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
   },
 });

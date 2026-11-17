@@ -1,5 +1,8 @@
 import { Image, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
+
+import { font } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 
 const boxMark = require('../assets/brand/box-mark.png');
 
@@ -8,14 +11,14 @@ type BrandLogoProps = {
 };
 
 export function BrandLogo({ variant }: BrandLogoProps) {
-  const theme = useTheme();
-  const markStyle = { tintColor: theme.colors.onSurface };
+  const c = useTokens();
+  const markStyle = { tintColor: c.ink };
 
   if (variant === 'compact') {
     return (
       <View style={styles.compact}>
         <Image source={boxMark} style={[styles.compactMark, markStyle]} accessible={false} />
-        <Text style={[styles.compactWordmark, { color: theme.colors.onSurface }]}>
+        <Text style={[styles.compactWordmark, { color: c.ink }]}>
           Mío CASE
         </Text>
       </View>
@@ -29,7 +32,7 @@ export function BrandLogo({ variant }: BrandLogoProps) {
         style={[styles.fullMark, markStyle]}
         accessible={false}
       />
-      <Text style={[styles.wordmark, { color: theme.colors.onSurface }]}>
+      <Text style={[styles.wordmark, { color: c.ink }]}>
         Mío{'\n'}CASE
       </Text>
     </View>
@@ -47,7 +50,7 @@ const styles = StyleSheet.create({
     width: 36,
   },
   compactWordmark: {
-    fontFamily: 'PlayfairDisplay_900Black_Italic',
+    fontFamily: font.brand,
     fontSize: 17,
   },
   full: {
@@ -60,7 +63,7 @@ const styles = StyleSheet.create({
     width: 72,
   },
   wordmark: {
-    fontFamily: 'PlayfairDisplay_900Black_Italic',
+    fontFamily: font.brand,
     fontSize: 28,
     lineHeight: 30,
   },

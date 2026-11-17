@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Redirect, router } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, HelperText, TextInput } from 'react-native-paper';
+import { HelperText } from 'react-native-paper';
 
+import { AppButton } from '@/design/AppButton';
+import { TextField } from '@/design/TextField';
 import { AuthPage } from '@/features/auth/AuthPage';
 import { AuthStatus } from '@/features/auth/AuthStatus';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -42,13 +44,9 @@ export default function PendingScreen() {
         title="No se pudo consultar tu membresía"
         body={getErrorMessage(membership.error)}
       >
-        <Button mode="contained" onPress={() => void membership.refetch()}>
-          Reintentar
-        </Button>
+        <AppButton label="Reintentar" onPress={() => void membership.refetch()} />
         {signOutError ? <HelperText type="error">{signOutError}</HelperText> : null}
-        <Button mode="outlined" onPress={() => void handleSignOut()}>
-          Cerrar sesión
-        </Button>
+        <AppButton label="Cerrar sesión" variant="secondary" onPress={() => void handleSignOut()} />
       </AuthStatus>
     );
   }
@@ -96,18 +94,15 @@ export default function PendingScreen() {
         title="No se pudo verificar tu cuenta"
         body="Contacta a un administrador de MioCASE por un canal oficial de la comunidad para solicitar una revisión."
       >
-        <Button
-          mode="outlined"
+        <AppButton
+          label="Actualizar estado"
+          variant="secondary"
           loading={membership.isFetching}
           disabled={membership.isFetching}
           onPress={() => void membership.refetch()}
-        >
-          Actualizar estado
-        </Button>
+        />
         {signOutError ? <HelperText type="error">{signOutError}</HelperText> : null}
-        <Button mode="outlined" onPress={() => void handleSignOut()}>
-          Cerrar sesión
-        </Button>
+        <AppButton label="Cerrar sesión" variant="secondary" onPress={() => void handleSignOut()} />
       </AuthStatus>
     );
   }
@@ -121,44 +116,34 @@ export default function PendingScreen() {
         control={control}
         name="code"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Código de invitación"
-            mode="outlined"
             autoCapitalize="none"
             autoCorrect={false}
             maxLength={32}
-            error={Boolean(errors.code)}
+            error={errors.code?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.code)}>
-        {errors.code?.message}
-      </HelperText>
-
       {actionError ? <HelperText type="error">{actionError}</HelperText> : null}
-      <Button
-        mode="contained"
+      <AppButton
+        label="Verificar con código"
         loading={isSubmitting}
         disabled={isSubmitting}
         onPress={() => void handleSubmit(redeemInvite)()}
-      >
-        Verificar con código
-      </Button>
-      <Button
-        mode="outlined"
+      />
+      <AppButton
+        label="Actualizar estado"
+        variant="secondary"
         loading={membership.isFetching}
         disabled={membership.isFetching}
         onPress={() => void membership.refetch()}
-      >
-        Actualizar estado
-      </Button>
+      />
       {signOutError ? <HelperText type="error">{signOutError}</HelperText> : null}
-      <Button mode="text" onPress={() => void handleSignOut()}>
-        Cerrar sesión
-      </Button>
+      <AppButton label="Cerrar sesión" variant="secondary" onPress={() => void handleSignOut()} />
     </AuthPage>
   );
 }

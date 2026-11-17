@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Dialog, HelperText, Portal, Text, TextInput } from 'react-native-paper';
+import { Dialog, HelperText, Portal, Text } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
+
+import { AppButton } from '@/design/AppButton';
+import { TextField } from '@/design/TextField';
+import { radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 
 import { getSupabaseClient } from '@/lib/supabase';
 
@@ -32,6 +38,7 @@ export function ReportDialog({
   onDismiss,
   onReported,
 }: ReportDialogProps) {
+  const c = useTokens();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const {
@@ -84,7 +91,11 @@ export function ReportDialog({
 
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={dismiss}>
+      <Dialog
+        visible={visible}
+        onDismiss={dismiss}
+        style={[styles.dialog, { backgroundColor: c.surface }]}
+      >
         <Dialog.Title>Reportar publicación</Dialog.Title>
         <Dialog.Content>
           <Text variant="bodyMedium">
@@ -94,22 +105,19 @@ export function ReportDialog({
             control={control}
             name="reason"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
+              <TextField
                 label="Motivo"
-                mode="outlined"
                 multiline
                 maxLength={300}
+                style={styles.input}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                error={Boolean(errors.reason)}
+                error={errors.reason?.message}
                 disabled={isSubmitting}
               />
             )}
           />
-          <HelperText type="error" visible={Boolean(errors.reason)}>
-            {errors.reason?.message}
-          </HelperText>
           <Text variant="bodySmall">{`${300 - reasonLength} caracteres disponibles`}</Text>
           {errorMessage ? (
             <HelperText type="error" visible>
@@ -117,21 +125,42 @@ export function ReportDialog({
             </HelperText>
           ) : null}
         </Dialog.Content>
-        <Dialog.Actions>
-          <Button onPress={dismiss} disabled={isSubmitting}>
-            Cancelar
-          </Button>
-          <Button
+        <View style={styles.actions}>
+          <AppButton
+            label="Cancelar"
+            variant="secondary"
+            disabled={isSubmitting}
+            onPress={dismiss}
+          />
+          <AppButton
+            label="Enviar reporte"
             onPress={() => {
               void handleSubmit(submit)();
             }}
             loading={isSubmitting}
             disabled={isSubmitting}
-          >
-            Enviar reporte
-          </Button>
-        </Dialog.Actions>
+          />
+        </View>
       </Dialog>
     </Portal>
   );
 }
+
+const styles = StyleSheet.create({
+  dialog: {
+    borderRadius: radius.xl,
+    paddingBottom: space.sm,
+  },
+  input: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    justifyContent: 'flex-end',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
+  },
+});

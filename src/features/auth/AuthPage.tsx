@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 import { BrandLogo } from '@/components/BrandLogo';
+import { ScreenHeader } from '@/design/ScreenHeader';
+import { font, palette, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 
 type AuthPageProps = {
   title: string;
@@ -12,12 +15,12 @@ type AuthPageProps = {
 };
 
 export function AuthPage({ title, subtitle, children }: AuthPageProps) {
-  const theme = useTheme();
+  const c = useTokens();
 
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -29,15 +32,20 @@ export function AuthPage({ title, subtitle, children }: AuthPageProps) {
         >
           <View style={styles.header}>
             <BrandLogo variant="full" />
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              Bueno, Bonito, Barato · Yacuiba
+            <View style={styles.brandStripe}>
+              <View style={[styles.stripeSegment, { backgroundColor: palette.red }]} />
+              <View style={[styles.stripeSegment, { backgroundColor: palette.yellow }]} />
+              <View style={[styles.stripeSegment, { backgroundColor: palette.green }]} />
+            </View>
+            <Text style={[styles.tagline, { color: c.inkMuted }]}>
+              Bueno, bonito, barato · Yacuiba
             </Text>
           </View>
           <View style={styles.form}>
-            <Text variant="headlineSmall">{title}</Text>
+            <ScreenHeader title={title} />
             <Text
               variant="bodyMedium"
-              style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
+              style={[styles.subtitle, { color: c.inkMuted }]}
             >
               {subtitle}
             </Text>
@@ -64,16 +72,34 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 28,
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  brandStripe: {
+    borderRadius: 999,
+    flexDirection: 'row',
+    height: 3,
+    overflow: 'hidden',
+    width: 120,
+  },
+  stripeSegment: {
+    flex: 1,
+  },
+  tagline: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    lineHeight: 16,
   },
   form: {
     alignSelf: 'center',
-    gap: 14,
+    gap: space.md,
     maxWidth: 480,
     width: '100%',
   },
   subtitle: {
     marginBottom: 8,
+    fontFamily: font.regular,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

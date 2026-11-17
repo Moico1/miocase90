@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { SymbolView } from 'expo-symbols';
 import { useRouter } from 'expo-router';
 import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,21 +9,26 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
-  Button,
   HelperText,
   ProgressBar,
-  RadioButton,
   Text,
-  TextInput,
-  useTheme,
+  Card,
 } from 'react-native-paper';
 
+import { AppButton } from '@/design/AppButton';
+import { Chip } from '@/design/Chip';
+import { ScreenHeader } from '@/design/ScreenHeader';
+import { TextField } from '@/design/TextField';
+import { font, radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useMembership } from '@/features/auth/useMembership';
 import {
@@ -57,7 +61,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function PublishListingScreen() {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
   const { session } = useAuth();
   const membership = useMembership(session?.user.id);
@@ -258,7 +262,7 @@ export function PublishListingScreen() {
   return (
     <SafeAreaView
       edges={['left', 'right', 'bottom']}
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -268,126 +272,100 @@ export function PublishListingScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Button
-            mode="text"
-            onPress={() => router.back()}
-            contentStyle={styles.backButtonContent}
-            icon={({ color, size }) => (
-              <SymbolView
-                name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }}
-                tintColor={color}
-                size={size}
-              />
-            )}
-          >
-            Volver
-          </Button>
-          <Text variant="headlineSmall">Publicar producto</Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Comparte una oferta con los miembros verificados de Yacuiba.
-          </Text>
-
-          {membership.isLoading ? (
-            <Text variant="bodyMedium">Comprobando tu membresía…</Text>
-          ) : !verified ? (
-            <Text variant="bodyMedium">
-              Tu cuenta debe estar verificada para publicar productos.
-            </Text>
-          ) : null}
-
-          <Controller
-            control={control}
-            name="title"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Título"
-                mode="outlined"
-                contentStyle={styles.inputContent}
-                maxLength={100}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={Boolean(errors.title)}
-                disabled={busy}
-              />
-            )}
+          <AppButton label="Volver" variant="secondary" onPress={() => router.back()} />
+          <ScreenHeader
+            title="Publicar producto"
+            subtitle="Comparte una oferta con los miembros verificados de Yacuiba."
           />
-          <HelperText type="error" visible={Boolean(errors.title)}>
-            {errors.title?.message}
-          </HelperText>
 
-          <View style={styles.priceSection}>
+          <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Card.Content style={styles.cardContent}>
+              {membership.isLoading ? (
+                <Text variant="bodyMedium">Comprobando tu membresía…</Text>
+              ) : !verified ? (
+                <Text variant="bodyMedium">
+                  Tu cuenta debe estar verificada para publicar productos.
+                </Text>
+              ) : null}
+
+              <Controller
+                control={control}
+                name="title"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    label="Título"
+                    maxLength={100}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.title?.message}
+                    disabled={busy}
+                  />
+                )}
+              />
+            </Card.Content>
+          </Card>
+
+          <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Card.Content style={styles.cardContent}>
+              <Text variant="titleMedium">Precio</Text>
+              <Controller
+                control={control}
+                name="currency"
+                render={({ field: { onChange, value } }) => (
+                  <View style={styles.currencyOptions}>
+                    {currencyOptions.map((option) => (
+                      <Chip
+                        key={option.value}
+                        label={option.label}
+                        selected={value === option.value}
+                        disabled={busy}
+                        onPress={() => onChange(option.value)}
+                      />
+                    ))}
+                  </View>
+                )}
+              />
             <Controller
               control={control}
               name="price"
               render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  label="Precio"
-                  mode="outlined"
-                  contentStyle={styles.inputContent}
+                <TextField
+                  label={`Precio (${currency === 'BOB' ? 'Bs' : currency})`}
                   keyboardType="decimal-pad"
-                  left={<TextInput.Affix text={currency === 'BOB' ? 'Bs' : currency} />}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={Boolean(errors.price)}
+                  error={errors.price?.message}
                   disabled={busy}
                 />
               )}
             />
-            <Controller
-              control={control}
-              name="currency"
-              render={({ field: { onChange, value } }) => (
-                <RadioButton.Group
-                  value={value}
-                  onValueChange={onChange}
-                >
-                  <View style={styles.currencyOptions}>
-                    {currencyOptions.map((option) => (
-                      <RadioButton.Item
-                        key={option.value}
-                        label={option.label}
-                        value={option.value}
-                        disabled={busy}
-                        style={styles.currencyOption}
-                        labelStyle={styles.currencyLabel}
-                      />
-                    ))}
-                  </View>
-                </RadioButton.Group>
-              )}
-            />
-          </View>
-          <HelperText type="error" visible={Boolean(errors.price)}>
-            {errors.price?.message}
-          </HelperText>
-          <Controller
-            control={control}
-            name="previousPrice"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Precio anterior (opcional)"
-                mode="outlined"
-                contentStyle={styles.inputContent}
-                keyboardType="decimal-pad"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={Boolean(errors.previousPrice)}
-                disabled={busy}
+              <Controller
+                control={control}
+                name="previousPrice"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    label="Precio anterior (opcional)"
+                    keyboardType="decimal-pad"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.previousPrice?.message}
+                    disabled={busy}
+                  />
+                )}
               />
-            )}
-          />
-          <HelperText type="error" visible={Boolean(errors.previousPrice)}>
-            {errors.previousPrice?.message}
-          </HelperText>
+            </Card.Content>
+          </Card>
 
+          <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Card.Content style={styles.cardContent}>
           <Text variant="titleMedium">Categoría</Text>
           {categoriesQuery.isLoading ? (
             <Text variant="bodyMedium">Cargando categorías…</Text>
           ) : categoriesQuery.isError ? (
-            <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
+            <Text variant="bodyMedium" style={{ color: c.danger }}>
               No se pudieron cargar las categorías. Comprueba tu conexión e inténtalo otra vez.
             </Text>
           ) : categoriesQuery.data?.length ? (
@@ -395,99 +373,136 @@ export function PublishListingScreen() {
               control={control}
               name="categoryId"
               render={({ field: { onChange, value } }) => (
-                <RadioButton.Group
-                  value={String(value)}
-                  onValueChange={(selected) => onChange(Number(selected))}
-                >
-                  <View style={styles.categoryList}>
-                    {categoriesQuery.data?.map((category) => (
-                      <RadioButton.Item
-                        key={category.id}
-                        label={category.name}
-                        value={String(category.id)}
-                        disabled={busy}
-                        style={styles.categoryItem}
-                      />
-                    ))}
-                  </View>
-                </RadioButton.Group>
+                <View style={styles.categoryList}>
+                  {categoriesQuery.data?.map((category) => (
+                    <Chip
+                      key={category.id}
+                      label={category.name}
+                      selected={value === category.id}
+                      disabled={busy}
+                      onPress={() => onChange(category.id)}
+                    />
+                  ))}
+                </View>
               )}
             />
           ) : (
-            <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
+            <Text variant="bodyMedium" style={{ color: c.danger }}>
               Aún no hay categorías disponibles. Pide al administrador que las cargue.
             </Text>
           )}
           <HelperText type="error" visible={Boolean(errors.categoryId)}>
             {errors.categoryId?.message}
           </HelperText>
+            </Card.Content>
+          </Card>
 
-          <Controller
-            control={control}
-            name="description"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Descripción (opcional)"
-                mode="outlined"
-                contentStyle={styles.multilineInputContent}
-                multiline
-                numberOfLines={4}
-                maxLength={1000}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={Boolean(errors.description)}
-                disabled={busy}
-              />
-            )}
-          />
-          <HelperText type="error" visible={Boolean(errors.description)}>
-            {errors.description?.message}
-          </HelperText>
-
-          <View style={styles.photoHeading}>
-            <Text variant="titleMedium">Fotos (máximo 5)</Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              {photos.length}/{MAX_LISTING_PHOTOS}
-            </Text>
-          </View>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            Se reducirán en el teléfono y se guardarán como JPEG de hasta 512 KiB.
-          </Text>
-          <Button
-            mode="outlined"
-            contentStyle={styles.buttonContent}
-            onPress={pickPhotos}
-            loading={isPreparingPhotos}
-            disabled={busy || photos.length >= MAX_LISTING_PHOTOS || !verified}
-          >
-            Elegir fotos
-          </Button>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            Mío CASE solo accede a las fotos que elijas para publicar productos.
-          </Text>
-          {photoProgress ? <Text variant="bodySmall">{photoProgress}</Text> : null}
-          {photos.length > 0 ? (
-            <View style={styles.photoList}>
-              {photos.map((photo, index) => (
-                <View key={`${photo.uri}-${index}`} style={styles.photoItem}>
-                  <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
-                  <Text variant="labelSmall">{Math.ceil(photo.size / 1024)} KiB</Text>
-                  <Button
-                    compact
-                    onPress={() => removePhoto(index)}
+          <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Card.Content style={styles.cardContent}>
+              <Controller
+                control={control}
+                name="description"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    label="Descripción (opcional)"
+                    multiline
+                    numberOfLines={4}
+                    maxLength={1000}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.description?.message}
                     disabled={busy}
-                    accessibilityLabel={`Quitar foto ${index + 1}`}
-                  >
-                    Quitar
-                  </Button>
-                </View>
-              ))}
-            </View>
-          ) : null}
-          <HelperText type="error" visible={Boolean(errors.photoCount)}>
-            {errors.photoCount?.message}
-          </HelperText>
+                    style={styles.multilineInput}
+                  />
+                )}
+              />
+            </Card.Content>
+          </Card>
+
+          <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Card.Content style={styles.cardContent}>
+              <View style={styles.photoHeading}>
+                <Text variant="titleMedium">Fotos</Text>
+                <Text variant="bodySmall" style={{ color: c.inkMuted }}>
+                  {photos.length}/{MAX_LISTING_PHOTOS}
+                </Text>
+              </View>
+              <Text variant="bodySmall" style={{ color: c.inkMuted }}>
+                Se reducirán en el teléfono y se guardarán como JPEG de hasta 512 KiB.
+              </Text>
+              <Text variant="bodySmall" style={{ color: c.inkMuted }}>
+                Mío CASE solo accede a las fotos que elijas para publicar productos.
+              </Text>
+              {photoProgress ? <Text variant="bodySmall">{photoProgress}</Text> : null}
+              <View style={styles.photoGrid}>
+                {Array.from({ length: MAX_LISTING_PHOTOS }, (_, index) => {
+                  const photo = photos[index];
+                  if (photo) {
+                    return (
+                      <View
+                        key={`${photo.uri}-${index}`}
+                        style={[
+                          styles.photoSlot,
+                          { backgroundColor: c.surface, borderColor: c.border },
+                        ]}
+                      >
+                        <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+                        <Text variant="labelSmall">{Math.ceil(photo.size / 1024)} KiB</Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Quitar foto ${index + 1}`}
+                          disabled={busy}
+                          onPress={() => removePhoto(index)}
+                          style={({ pressed }) => [
+                            styles.removePhoto,
+                            { backgroundColor: c.danger, opacity: pressed ? 0.8 : 1 },
+                          ]}
+                        >
+                          <MaterialCommunityIcons name="close" size={20} color={c.onDanger} />
+                        </Pressable>
+                      </View>
+                    );
+                  }
+                  if (index === photos.length && photos.length < MAX_LISTING_PHOTOS) {
+                    return (
+                      <Pressable
+                        key={`add-${index}`}
+                        accessibilityRole="button"
+                        accessibilityLabel="Agregar fotos"
+                        onPress={() => void pickPhotos()}
+                        disabled={busy || !verified}
+                        style={({ pressed }) => [
+                          styles.addPhotoSlot,
+                          {
+                            backgroundColor: c.surfaceMuted,
+                            borderColor: c.border,
+                            opacity: busy || !verified ? 0.5 : pressed ? 0.8 : 1,
+                          },
+                        ]}
+                      >
+                        <View style={[styles.addPhotoIcon, { backgroundColor: c.primary }]}>
+                          <MaterialCommunityIcons name="plus" size={24} color={c.onPrimary} />
+                        </View>
+                        <Text style={[styles.addPhotoLabel, { color: c.primary }]}>Agregar</Text>
+                      </Pressable>
+                    );
+                  }
+                  return (
+                    <View
+                      key={`empty-${index}`}
+                      style={[styles.emptyPhotoSlot, { backgroundColor: c.surfaceMuted, borderColor: c.border }]}
+                    >
+                      <MaterialCommunityIcons name="image-outline" size={24} color={c.inkMuted} />
+                    </View>
+                  );
+                })}
+              </View>
+              <HelperText type="error" visible={Boolean(errors.photoCount)}>
+                {errors.photoCount?.message}
+              </HelperText>
+            </Card.Content>
+          </Card>
 
           {isSubmitting ? (
             <View style={styles.progressContainer}>
@@ -495,23 +510,23 @@ export function PublishListingScreen() {
               <ProgressBar
                 indeterminate={progressValue === undefined}
                 progress={progressValue}
+                color={c.primary}
               />
             </View>
           ) : null}
           {errorMessage ? (
-            <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
+            <Text accessibilityRole="alert" style={{ color: c.danger }}>
               {errorMessage}
             </Text>
           ) : null}
           {successMessage ? (
-            <Text accessibilityRole="alert" style={{ color: theme.colors.primary }}>
+            <Text accessibilityRole="alert" style={{ color: c.primary }}>
               {successMessage}
             </Text>
           ) : null}
 
-          <Button
-            mode="contained"
-            contentStyle={styles.buttonContent}
+          <AppButton
+            label="Publicar"
             onPress={() => {
               if (photos.length < 1) {
                 setErrorMessage('Agrega al menos una foto');
@@ -527,9 +542,7 @@ export function PublishListingScreen() {
               categoriesQuery.isError ||
               categoriesQuery.data?.length === 0
             }
-          >
-            Publicar
-          </Button>
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -544,67 +557,97 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 12,
-    padding: 20,
+    gap: space.md,
+    padding: space.lg,
   },
-  backButtonContent: {
-    minHeight: 48,
+  sectionCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
   },
-  inputContent: {
-    minHeight: 50,
+  cardContent: {
+    gap: space.md,
+    padding: space.lg,
   },
-  multilineInputContent: {
-    minHeight: 100,
-    paddingTop: 12,
-  },
-  buttonContent: {
-    minHeight: 52,
-  },
-  priceSection: {
-    gap: 4,
+  multilineInput: {
+    minHeight: 120,
+    textAlignVertical: 'top',
   },
   currencyOptions: {
-    alignItems: 'center',
     flexDirection: 'row',
-    width: '100%',
-  },
-  currencyOption: {
-    flex: 1,
-    minWidth: 0,
-    paddingHorizontal: 0,
-  },
-  currencyLabel: {
-    fontSize: 12,
+    flexWrap: 'wrap',
+    gap: space.sm,
   },
   categoryList: {
-    borderColor: '#80808055',
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-  },
-  categoryItem: {
-    minHeight: 44,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
   },
   photoHeading: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  photoList: {
+  photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: space.sm,
   },
-  photoItem: {
+  photoSlot: {
     alignItems: 'center',
-    width: 92,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: space.xs,
+    overflow: 'hidden',
+    padding: space.xs,
+    width: '30%',
   },
   photoPreview: {
-    borderRadius: 8,
-    height: 84,
-    width: 84,
+    aspectRatio: 4 / 5,
+    borderRadius: radius.sm,
+    width: '100%',
+  },
+  removePhoto: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    height: 48,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 48,
+  },
+  addPhotoSlot: {
+    alignItems: 'center',
+    aspectRatio: 0.8,
+    borderRadius: radius.md,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    gap: space.sm,
+    justifyContent: 'center',
+    width: '30%',
+  },
+  addPhotoIcon: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  addPhotoLabel: {
+    fontFamily: font.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  emptyPhotoSlot: {
+    alignItems: 'center',
+    aspectRatio: 0.8,
+    borderRadius: radius.md,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    justifyContent: 'center',
+    width: '30%',
   },
   progressContainer: {
-    gap: 8,
+    gap: space.sm,
   },
 });

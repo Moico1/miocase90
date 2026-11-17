@@ -1,16 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, Text, useTheme } from 'react-native-paper';
+import { Button, Card, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppButton } from '@/design/AppButton';
+import { Badge } from '@/design/Badge';
+import { EmptyState } from '@/design/EmptyState';
+import { ScreenHeader } from '@/design/ScreenHeader';
+import { font, radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthPage } from '@/features/auth/AuthPage';
 import { formatListingPrice } from '@/features/listings/listingQueries';
 import { fetchFavoriteListings } from './storeQueries';
 
 export function FavoriteListingsScreen() {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
   const { session } = useAuth();
   const favorites = useQuery({
@@ -22,28 +28,39 @@ export function FavoriteListingsScreen() {
   if (!session?.user.id) {
     return (
       <AuthPage title="Mis favoritos" subtitle="Crea tu cuenta gratis para guardar productos.">
-        <Button mode="contained" onPress={() => router.push('/sign-up')}>Registrarme</Button>
-        <Button mode="outlined" onPress={() => router.push('/sign-in')}>Ya tengo cuenta</Button>
+        <AppButton label="Registrarme" onPress={() => router.push('/sign-up')} />
+        <AppButton
+          label="Ya tengo cuenta"
+          variant="secondary"
+          onPress={() => router.push('/sign-in')}
+        />
       </AuthPage>
     );
   }
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView
+      edges={['left', 'right', 'bottom']}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
+    >
       <ScrollView contentContainerStyle={styles.content}>
-        <Button onPress={() => router.back()} style={styles.alignStart}>Volver</Button>
-        <Text variant="headlineSmall">Mis favoritos</Text>
+        <AppButton label="Volver" variant="secondary" onPress={() => router.back()} />
+        <ScreenHeader title="Mis favoritos" />
         {favorites.isPending ? (
           <Text variant="bodyMedium">Cargando tus productos guardados…</Text>
         ) : favorites.isError ? (
-          <View style={styles.state}>
-            <Text variant="bodyMedium">No se pudieron cargar tus favoritos.</Text>
-            <Button onPress={() => void favorites.refetch()}>Reintentar</Button>
-          </View>
+          <EmptyState
+            title="No se pudieron cargar tus favoritos"
+            message="Comprueba tu conexión e inténtalo otra vez."
+            actionLabel="Reintentar"
+            onAction={() => void favorites.refetch()}
+          />
         ) : favorites.data.length === 0 ? (
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Todavía no guardaste productos. Explora el catálogo y toca “Guardar favorito”.
-          </Text>
+          <EmptyState
+            title="Todavía no guardaste productos"
+            message="Explora el catálogo y guarda tus ofertas favoritas."
+            icon="heart-outline"
+          />
         ) : (
           favorites.data.map((listing) => {
             const storeId = listing.store_id;
@@ -73,24 +90,32 @@ function FavoriteCard({
   onOpen: () => void;
   onOpenStore?: () => void;
 }) {
-  const theme = useTheme();
+  const c = useTokens();
   return (
-    <Card mode="outlined" onPress={onOpen}>
+    <Card mode="outlined" onPress={onOpen} style={styles.favoriteCard}>
       <Card.Content style={styles.card}>
         <Text variant="titleMedium">{listing.title}</Text>
-        <Text variant="titleLarge" style={{ color: theme.colors.primary }}>
+        <Text style={[styles.price, { color: c.primary }]}>
           {formatListingPrice(listing.price, listing.currency)}
         </Text>
         <View style={styles.chips}>
-          {listing.previous_price !== null ? <Chip compact>Oferta</Chip> : null}
-          {listing.status === 'sold' ? <Chip compact>Vendido</Chip> : null}
-          {listing.isNew ? <Chip compact>Nuevo</Chip> : null}
+          {listing.previous_price !== null ? <Badge label="Oferta" /> : null}
+          {listing.status === 'sold' ? (
+            <Badge label="Vendido" backgroundColor={c.ink} color={c.background} />
+          ) : null}
+          {listing.isNew ? (
+            <Badge label="Nuevo" backgroundColor={c.accent} color={c.onAccent} />
+          ) : null}
         </View>
         {onOpenStore ? (
-          <Button compact onPress={(event) => {
-            event.stopPropagation();
-            onOpenStore();
-          }}>
+          <Button
+            mode="outlined"
+            style={styles.storeButton}
+            onPress={(event) => {
+              event.stopPropagation();
+              onOpenStore();
+            }}
+          >
             {listing.store_name}
           </Button>
         ) : null}
@@ -101,9 +126,10 @@ function FavoriteCard({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  content: { gap: 12, padding: 16 },
-  alignStart: { alignSelf: 'flex-start' },
-  state: { alignItems: 'center', gap: 8, padding: 12 },
-  card: { gap: 6 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  content: { gap: space.md, padding: space.lg },
+  favoriteCard: { borderRadius: radius.lg, borderWidth: 1 },
+  storeButton: { minHeight: 48, justifyContent: 'center' },
+  card: { gap: space.sm },
+  price: { fontFamily: font.heavy, fontSize: 20, lineHeight: 28 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
 });

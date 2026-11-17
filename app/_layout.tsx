@@ -7,10 +7,17 @@ import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
 import { Platform, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { miocaseDarkTheme, miocaseLightTheme } from '@/theme';
+import { font } from '@/design/tokens';
 
 if (Platform.OS !== 'web') {
   void SplashScreen.preventAutoHideAsync();
@@ -29,7 +36,11 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    PlayfairDisplay_900Black_Italic: require('@expo-google-fonts/playfair-display/900Black_Italic/PlayfairDisplay_900Black_Italic.ttf'),
+    [font.brand]: require('@expo-google-fonts/playfair-display/900Black_Italic/PlayfairDisplay_900Black_Italic.ttf'),
+    [font.regular]: PlusJakartaSans_500Medium,
+    [font.semibold]: PlusJakartaSans_600SemiBold,
+    [font.bold]: PlusJakartaSans_700Bold,
+    [font.heavy]: PlusJakartaSans_800ExtraBold,
   });
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? miocaseDarkTheme : miocaseLightTheme;
@@ -57,7 +68,11 @@ export default function RootLayout() {
   );
 }
 
-function RootNavigator({ theme }: { theme: typeof miocaseLightTheme }) {
+function RootNavigator({
+  theme,
+}: {
+  theme: typeof miocaseLightTheme | typeof miocaseDarkTheme;
+}) {
   return (
     <Stack
       screenOptions={{

@@ -57,7 +57,7 @@ La URL y la clave `anon`/publishable se entregan al cliente; no son una clave de
 ### Funcionalidad: `src/`
 
 - `src/lib/supabase.ts`: cliente Supabase único y comprobación de configuración.
-- `src/theme.ts`: paletas MioCASE clara y oscura; `components/BrandLogo.tsx` muestra la identidad de marca.
+- `src/theme.ts` integra los temas MD3 claro y oscuro; `src/design/` contiene tokens, `useTokens` y componentes de presentación reutilizables. La carga global de Playfair Display y Plus Jakarta Sans ocurre en `app/_layout.tsx`; `components/BrandLogo.tsx` muestra la identidad de marca.
 - `src/features/auth/`: proveedor de sesión, formularios y esquemas, estado de acceso, consulta de membresía y barrera de miembro verificado. `errorMessage.ts` normaliza mensajes.
 - `src/features/listings/`: catálogo, consultas, detalle, validación y publicación, preparación de imágenes y eliminación.
 - `src/features/profile/`: perfil y validación de datos de perfil.

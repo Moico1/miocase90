@@ -3,18 +3,15 @@ import { StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { z } from 'zod';
-import {
-  Button,
-  Card,
-  Dialog,
-  HelperText,
-  Portal,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { Card, Dialog, HelperText, Portal, Text } from 'react-native-paper';
 
 import { AccountRequiredSheet } from '@/features/auth/AccountRequiredSheet';
+import { AppButton } from '@/design/AppButton';
+import { EmptyState } from '@/design/EmptyState';
+import { SectionHeader } from '@/design/SectionHeader';
+import { TextField } from '@/design/TextField';
+import { radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getSupabaseClient } from '@/lib/supabase';
 
@@ -35,7 +32,7 @@ export function ListingComments({
   listingId: string;
   isOwnListing: boolean;
 }) {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { session } = useAuth();
@@ -143,24 +140,33 @@ export function ListingComments({
 
   return (
     <View style={styles.container}>
-      <Text variant="titleLarge">Preguntas y comentarios</Text>
+      <SectionHeader title="Preguntas y comentarios" />
       {commentsQuery.isPending ? (
         <Text variant="bodyMedium">Cargando comentarios…</Text>
       ) : commentsQuery.isError ? (
         <View style={styles.state}>
           <Text variant="bodyMedium">No se pudieron cargar los comentarios.</Text>
-          <Button onPress={() => void commentsQuery.refetch()}>Reintentar</Button>
+          <AppButton
+            label="Reintentar"
+            variant="secondary"
+            onPress={() => void commentsQuery.refetch()}
+          />
         </View>
       ) : commentsQuery.data.length === 0 ? (
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          Todavía no hay preguntas. Sé la primera persona en consultar.
-        </Text>
+        <EmptyState
+          title="Todavía no hay preguntas"
+          message="Sé la primera persona en consultar sobre este producto."
+          icon="comment-question-outline"
+        />
       ) : (
         commentsQuery.data.map((comment) => (
           <Card
             key={comment.id}
             mode="outlined"
-            style={comment.parent_comment_id ? styles.replyCard : undefined}
+            style={[
+              styles.commentCard,
+              comment.parent_comment_id ? styles.replyCard : undefined,
+            ]}
           >
             <Card.Content style={styles.comment}>
               <Text variant="labelLarge">
@@ -168,59 +174,56 @@ export function ListingComments({
               </Text>
               <Text variant="bodyMedium">{comment.body}</Text>
               {comment.parent_comment_id === null && isOwnListing ? (
-                <Button
-                  compact
+                <AppButton
+                  label="Responder"
+                  variant="secondary"
                   onPress={() => {
                     if (requireAccount('comment')) setReplyTo(comment.id);
                   }}
-                >
-                  Responder
-                </Button>
+                />
               ) : null}
               {comment.can_block ? (
-                <Button compact onPress={() => void blockAuthor(comment.id)}>
-                  Bloquear cuenta
-                </Button>
+                <AppButton
+                  label="Bloquear cuenta"
+                  variant="secondary"
+                  onPress={() => void blockAuthor(comment.id)}
+                />
               ) : null}
               {session?.user.id ? (
-                <Button
-                  compact
+                <AppButton
+                  label="Reportar comentario"
+                  variant="secondary"
                   onPress={() => {
                     setReportId(comment.id);
                     setReportReason('');
                   }}
-                >
-                  Reportar comentario
-                </Button>
+                />
               ) : (
-                <Button
-                  compact
+                <AppButton
+                  label="Reportar comentario"
+                  variant="secondary"
                   onPress={() => {
                     setReportId(comment.id);
                     requireAccount('report');
                   }}
-                >
-                  Reportar comentario
-                </Button>
+                />
               )}
               {replyTo === comment.id ? (
                 <View style={styles.form}>
-                  <TextInput
-                    mode="outlined"
+                  <TextField
                     label="Respuesta del vendedor"
                     value={replyText}
                     onChangeText={setReplyText}
                     maxLength={800}
                     multiline
+                    style={styles.multilineInput}
                   />
-                  <Button
-                    mode="contained"
+                  <AppButton
+                    label="Publicar respuesta"
                     loading={submitMutation.isPending}
                     disabled={submitMutation.isPending || !replyText.trim()}
                     onPress={() => submitMutation.mutate({ text: replyText, parentId: comment.id })}
-                  >
-                    Publicar respuesta
-                  </Button>
+                  />
                 </View>
               ) : null}
             </Card.Content>
@@ -229,54 +232,57 @@ export function ListingComments({
       )}
       {!isOwnListing ? (
         <View style={styles.form}>
-          <TextInput
-            mode="outlined"
+          <TextField
             label="Escribe una pregunta o comentario"
             value={commentText}
             onChangeText={setCommentText}
             maxLength={800}
             multiline
+            style={styles.multilineInput}
           />
           <HelperText type="info" visible>
             No incluyas enlaces. Máximo 5 comentarios por hora.
           </HelperText>
-          <Button
-            mode="contained"
+            <AppButton
+              label="Publicar comentario"
             disabled={submitMutation.isPending || !commentText.trim()}
             loading={submitMutation.isPending}
             onPress={() => {
               if (requireAccount('comment')) submitMutation.mutate({ text: commentText, parentId: null });
             }}
-          >
-            Publicar comentario
-          </Button>
+            />
         </View>
       ) : null}
-      {message ? <Text style={{ color: theme.colors.primary }}>{message}</Text> : null}
+        {message ? <Text style={{ color: c.primary }}>{message}</Text> : null}
       {errorMessage ? (
-        <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>{errorMessage}</Text>
+          <Text accessibilityRole="alert" style={{ color: c.danger }}>{errorMessage}</Text>
       ) : null}
       <Portal>
         <Dialog
           visible={reportId !== null && Boolean(session?.user.id)}
           onDismiss={() => setReportId(null)}
+            style={[styles.dialog, { backgroundColor: c.surface }]}
         >
           <Dialog.Title>Reportar comentario</Dialog.Title>
           <Dialog.Content>
-            <TextInput
-              mode="outlined"
+            <TextField
               label="Motivo"
               value={reportReason}
               onChangeText={setReportReason}
               maxLength={300}
               multiline
+              style={styles.multilineInput}
             />
             <HelperText type="info" visible>Máximo 300 caracteres.</HelperText>
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setReportId(null)}>Cancelar</Button>
-            <Button onPress={() => void submitReport()}>Enviar</Button>
-          </Dialog.Actions>
+          <View style={styles.dialogActions}>
+            <AppButton
+              label="Cancelar"
+              variant="secondary"
+              onPress={() => setReportId(null)}
+            />
+            <AppButton label="Enviar" onPress={() => void submitReport()} />
+          </View>
         </Dialog>
       </Portal>
       <AccountRequiredSheet
@@ -290,9 +296,40 @@ export function ListingComments({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, paddingVertical: 12 },
-  state: { alignItems: 'center', gap: 8, padding: 12 },
-  comment: { gap: 6 },
-  replyCard: { marginLeft: 20 },
-  form: { gap: 8 },
+  container: {
+    gap: space.md,
+    paddingVertical: space.md,
+  },
+  state: {
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.lg,
+  },
+  commentCard: {
+    borderRadius: radius.lg,
+  },
+  comment: {
+    gap: space.sm,
+  },
+  replyCard: {
+    marginLeft: space.xl,
+  },
+  form: {
+    gap: space.md,
+  },
+  multilineInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  dialog: {
+    borderRadius: radius.xl,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    justifyContent: 'flex-end',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
+  },
 });

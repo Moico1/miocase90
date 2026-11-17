@@ -4,18 +4,14 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
-  Button,
   Card,
-  Chip,
   HelperText,
   Switch,
   Text,
-  TextInput,
-  useTheme,
 } from 'react-native-paper';
 import { z } from 'zod';
 
@@ -23,6 +19,14 @@ import { AdminPanel } from '@/features/admin/AdminPanel';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthPage } from '@/features/auth/AuthPage';
 import { useMembership } from '@/features/auth/useMembership';
+import { AppButton } from '@/design/AppButton';
+import { Badge } from '@/design/Badge';
+import { EmptyState } from '@/design/EmptyState';
+import { ScreenHeader } from '@/design/ScreenHeader';
+import { SectionHeader } from '@/design/SectionHeader';
+import { TextField } from '@/design/TextField';
+import { font, radius, shadow, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import {
   profileFormSchema,
   type ProfileFormInput,
@@ -57,7 +61,7 @@ function deletionErrorMessage(error: unknown): string {
 }
 
 export function ProfileScreen() {
-  const theme = useTheme();
+  const c = useTokens();
   const router = useRouter();
   const { session, signOut } = useAuth();
   const queryClient = useQueryClient();
@@ -270,18 +274,27 @@ export function ProfileScreen() {
     }
   }
 
+  const profileName = profileQuery.data?.displayName || session?.user.email || 'Mi cuenta';
+  const profileInitials = profileName.trim().slice(0, 2).toLocaleUpperCase() || 'M';
+  const accountLabel =
+    sellerStatus.data === 'verified'
+      ? 'Vendedor aprobado'
+      : sellerStatus.data === 'pending'
+        ? 'Solicitud de vendedor pendiente'
+        : 'Comprador';
+
   if (!userId) {
     return (
       <AuthPage
         title="Tu perfil"
         subtitle="Inicia sesión o crea una cuenta gratis para guardar tus datos y publicar."
       >
-        <Button mode="contained" onPress={() => router.push('/sign-up')}>
-          Registrarme
-        </Button>
-        <Button mode="outlined" onPress={() => router.push('/sign-in')}>
-          Ya tengo cuenta
-        </Button>
+        <AppButton label="Registrarme" onPress={() => router.push('/sign-up')} />
+        <AppButton
+          label="Ya tengo cuenta"
+          variant="secondary"
+          onPress={() => router.push('/sign-in')}
+        />
       </AuthPage>
     );
   }
@@ -289,204 +302,254 @@ export function ProfileScreen() {
   return (
     <SafeAreaView
       edges={['left', 'right', 'bottom']}
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text variant="headlineSmall">Mi cuenta</Text>
-        <Button
-          mode="outlined"
-          onPress={() => router.push('/favorites')}
-          style={styles.buttonContent}
-        >
-          Mis favoritos
-        </Button>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          {session?.user.email}
-        </Text>
-
-        <Text variant="titleLarge">Cuenta de comprador</Text>
-        {sellerStatus.data === 'verified' ? (
-          <Text variant="bodyMedium">Vendedor aprobado: ya puedes publicar productos.</Text>
-        ) : sellerStatus.data === 'pending' ? (
-          <Text variant="bodyMedium">
-            Tu solicitud para vender está pendiente. Puedes seguir comprando mientras esperas.
-          </Text>
-        ) : (
-          <View style={styles.form}>
-            <Text variant="bodyMedium">
-              Comprar es gratis. Para publicar, solicita la aprobación como vendedor.
-            </Text>
-            <Button mode="outlined" onPress={() => void requestSellerStatus()}>
-              Solicitar ser vendedor
-            </Button>
+        <View style={[styles.profileHeader, { backgroundColor: c.surface, borderColor: c.border }, shadow.card]}>
+          <View style={[styles.avatar, { backgroundColor: c.primary }]}>
+            <Text style={[styles.avatarText, { color: c.onPrimary }]}>{profileInitials}</Text>
           </View>
-        )}
-        {sellerRequestError ? (
-          <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
-            {sellerRequestError}
-          </Text>
-        ) : null}
-        {sellerRequestMessage ? (
-          <Text accessibilityRole="alert" style={{ color: theme.colors.primary }}>
-            {sellerRequestMessage}
-          </Text>
-        ) : null}
-
-        <Text variant="titleLarge">Mi perfil</Text>
-        {profileQuery.isPending ? (
-          <ActivityIndicator />
-        ) : profileQuery.isError ? (
-          <View style={styles.state}>
-            <Text variant="bodyMedium">No se pudo cargar tu perfil.</Text>
-            <Button onPress={() => void profileQuery.refetch()}>Reintentar</Button>
+          <View style={styles.profileIdentity}>
+            <ScreenHeader title={profileName} />
+            <Badge label={accountLabel} backgroundColor={c.primary} color={c.onPrimary} />
+            <Text style={[styles.email, { color: c.inkMuted }]}>{session?.user.email}</Text>
           </View>
-        ) : (
-          <View style={styles.form}>
-            <Controller
-              control={control}
-              name="displayName"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  label="Nombre para mostrar"
-                  mode="outlined"
-                  maxLength={60}
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={Boolean(errors.displayName)}
+        </View>
+
+        <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <Card.Content style={styles.sectionContent}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons name="account-outline" size={24} color={c.primary} />
+              <SectionHeader title="Cuenta de comprador" />
+            </View>
+            {sellerStatus.data === 'verified' ? (
+              <Text variant="bodyMedium">Vendedor aprobado: ya puedes publicar productos.</Text>
+            ) : sellerStatus.data === 'pending' ? (
+              <Text variant="bodyMedium">
+                Tu solicitud para vender está pendiente. Puedes seguir comprando mientras esperas.
+              </Text>
+            ) : (
+              <View style={styles.form}>
+                <Text variant="bodyMedium">
+                  Comprar es gratis. Para publicar, solicita la aprobación como vendedor.
+                </Text>
+                <AppButton
+                  label="Solicitar ser vendedor"
+                  variant="secondary"
+                  onPress={() => void requestSellerStatus()}
+                />
+              </View>
+            )}
+            {sellerRequestError ? (
+              <Text accessibilityRole="alert" style={{ color: c.danger }}>
+                {sellerRequestError}
+              </Text>
+            ) : null}
+            {sellerRequestMessage ? (
+              <Text accessibilityRole="alert" style={{ color: c.primary }}>
+                {sellerRequestMessage}
+              </Text>
+            ) : null}
+          </Card.Content>
+        </Card>
+
+        <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <Card.Content style={styles.sectionContent}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons name="account-edit-outline" size={24} color={c.primary} />
+              <SectionHeader title="Mi perfil" />
+            </View>
+            {profileQuery.isPending ? (
+              <ActivityIndicator color={c.primary} />
+            ) : profileQuery.isError ? (
+              <EmptyState
+                title="No se pudo cargar tu perfil"
+                message="Comprueba tu conexión e inténtalo otra vez."
+                actionLabel="Reintentar"
+                onAction={() => void profileQuery.refetch()}
+              />
+            ) : (
+              <View style={styles.form}>
+                <Controller
+                  control={control}
+                  name="displayName"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <TextField
+                      label="Nombre para mostrar"
+                      maxLength={60}
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.displayName?.message}
+                      disabled={isSavingProfile}
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="showWhatsapp"
+                  render={({ field: { onChange, value } }) => (
+                    <View style={styles.switchRow}>
+                      <Text variant="bodyMedium">Mostrar WhatsApp en mis publicaciones</Text>
+                      <Switch
+                        value={value}
+                        onValueChange={onChange}
+                        disabled={isSavingProfile || !profileQuery.data?.whatsappVerified}
+                      />
+                    </View>
+                  )}
+                />
+                {!profileQuery.data?.whatsappVerified ? (
+                  <HelperText type="info" visible>
+                    Primero verifica tu número para poder mostrarlo en tus publicaciones.
+                  </HelperText>
+                ) : null}
+                {profileError ? (
+                  <Text accessibilityRole="alert" style={{ color: c.danger }}>
+                    {profileError}
+                  </Text>
+                ) : null}
+                {profileMessage ? (
+                  <Text accessibilityRole="alert" style={{ color: c.primary }}>
+                    {profileMessage}
+                  </Text>
+                ) : null}
+                <AppButton
+                  label="Guardar perfil"
+                  onPress={() => {
+                    void handleSubmit(saveProfile)();
+                  }}
+                  loading={isSavingProfile}
                   disabled={isSavingProfile}
                 />
-              )}
-            />
-            <HelperText type="error" visible={Boolean(errors.displayName)}>
-              {errors.displayName?.message}
-            </HelperText>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
 
-            <Controller
-              control={control}
-              name="showWhatsapp"
-              render={({ field: { onChange, value } }) => (
-                <View style={styles.switchRow}>
-                  <Text variant="bodyMedium">Mostrar WhatsApp en mis publicaciones</Text>
-                  <Switch
-                    value={value}
-                    onValueChange={onChange}
-                    disabled={isSavingProfile || !profileQuery.data?.whatsappVerified}
-                  />
-                </View>
-              )}
+        <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <Card.Content style={styles.sectionContent}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons name="heart-outline" size={24} color={c.primary} />
+              <SectionHeader title="Favoritos" />
+            </View>
+            <AppButton
+              label="Ver mis favoritos"
+              variant="secondary"
+              onPress={() => router.push('/favorites')}
             />
-            {!profileQuery.data?.whatsappVerified ? (
-              <HelperText type="info" visible>
-                Primero verifica tu número para poder mostrarlo en tus publicaciones.
-              </HelperText>
-            ) : null}
-            {profileError ? (
-              <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
-                {profileError}
-              </Text>
-            ) : null}
-            {profileMessage ? (
-              <Text accessibilityRole="alert" style={{ color: theme.colors.primary }}>
-                {profileMessage}
-              </Text>
-            ) : null}
-            <Button
-              mode="contained"
-              contentStyle={styles.buttonContent}
-              onPress={() => {
-                void handleSubmit(saveProfile)();
-              }}
-              loading={isSavingProfile}
-              disabled={isSavingProfile}
-            >
-              Guardar perfil
-            </Button>
-          </View>
-        )}
+          </Card.Content>
+        </Card>
 
         {sellerStatus.data === 'verified' ? (
           <>
-        <WhatsAppVerificationManager
-          key={profileQuery.data?.whatsapp ?? 'no-verified-number'}
-          userId={userId}
-          verifiedNumber={profileQuery.data?.whatsappVerified ? profileQuery.data.whatsapp : null}
-        />
-        <StoreManager />
-        <Text variant="titleLarge">Mis publicaciones</Text>
-        {listingsQuery.isPending ? (
-          <ActivityIndicator />
-        ) : listingsQuery.isError ? (
-          <View style={styles.state}>
-            <Text variant="bodyMedium">No se pudieron cargar tus publicaciones.</Text>
-            <Button onPress={() => void listingsQuery.refetch()}>Reintentar</Button>
-          </View>
-        ) : listingsQuery.data.length === 0 ? (
-          <Text variant="bodyMedium">Todavía no tienes publicaciones.</Text>
-        ) : (
-          listingsQuery.data.map((listing) => (
-            <Card key={listing.id} mode="outlined">
-              <Card.Content style={styles.listingCard}>
-                <Text variant="titleMedium">{listing.title}</Text>
-                <Text variant="bodyLarge">
-                  {formatListingPrice(listing.price, listing.currency)}
-                </Text>
-                <View style={styles.statusRow}>
-                  <Text variant="bodyMedium">Estado: {statusLabels[listing.status]}</Text>
-                  {listing.status === 'sold' ? (
-                    <Chip
-                      compact
-                      icon={({ color, size }) => (
-                        <SymbolView
-                          name={{
-                            ios: 'checkmark.circle.fill',
-                            android: 'check_circle',
-                            web: 'check_circle',
-                          }}
-                          tintColor={color}
-                          size={size}
-                        />
-                      )}
-                    >
-                      Vendido
-                    </Chip>
-                  ) : null}
+            <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <Card.Content style={styles.sectionContent}>
+                <View style={styles.sectionHeading}>
+                  <MaterialCommunityIcons name="store-outline" size={24} color={c.primary} />
+                  <SectionHeader title="Mi tienda" />
                 </View>
-                <View style={styles.actionRow}>
-                  {listing.status === 'active' ? (
-                    <Button
-                      compact
-                      mode="outlined"
-                      disabled={busyListingId !== null}
-                      loading={busyListingId === listing.id}
-                      onPress={() => void markAsSold(listing.id)}
-                    >
-                      Marcar como vendida
-                    </Button>
-                  ) : null}
-                  <Button
-                    compact
-                    textColor={theme.colors.error}
-                    disabled={busyListingId !== null}
-                    loading={busyListingId === listing.id}
-                    onPress={() => confirmDelete(listing)}
-                  >
-                    {listing.status === 'removed' ? 'Completar eliminación' : 'Eliminar publicación'}
-                  </Button>
-                </View>
+                <StoreManager />
               </Card.Content>
             </Card>
-          ))
-        )}
-        {listingActionError ? (
-          <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
-            {listingActionError}
-          </Text>
-        ) : null}
+            <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <Card.Content style={styles.sectionContent}>
+                <View style={styles.sectionHeading}>
+                  <MaterialCommunityIcons name="whatsapp" size={24} color={c.primary} />
+                  <SectionHeader title="WhatsApp" />
+                </View>
+                <WhatsAppVerificationManager
+                  key={profileQuery.data?.whatsapp ?? 'no-verified-number'}
+                  userId={userId}
+                  verifiedNumber={profileQuery.data?.whatsappVerified ? profileQuery.data.whatsapp : null}
+                />
+              </Card.Content>
+            </Card>
+            <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <Card.Content style={styles.sectionContent}>
+                <View style={styles.sectionHeading}>
+                  <MaterialCommunityIcons name="tag-multiple-outline" size={24} color={c.primary} />
+                  <SectionHeader title="Mis publicaciones" />
+                </View>
+                {listingsQuery.isPending ? (
+                  <ActivityIndicator color={c.primary} />
+                ) : listingsQuery.isError ? (
+                  <EmptyState
+                    title="No se pudieron cargar tus publicaciones"
+                    message="Comprueba tu conexión e inténtalo otra vez."
+                    actionLabel="Reintentar"
+                    onAction={() => void listingsQuery.refetch()}
+                  />
+                ) : listingsQuery.data.length === 0 ? (
+                  <EmptyState
+                    title="Todavía no tienes publicaciones"
+                    message="Cuando publiques un producto, podrás gestionarlo desde aquí."
+                  />
+                ) : (
+                  listingsQuery.data.map((listing) => (
+                    <Card
+                      key={listing.id}
+                      mode="outlined"
+                      style={[styles.listingCardContainer, { backgroundColor: c.surface, borderColor: c.border }]}
+                    >
+                      <Card.Content style={styles.listingCard}>
+                        <Text variant="titleMedium">{listing.title}</Text>
+                        <Text variant="bodyLarge">
+                          {formatListingPrice(listing.price, listing.currency)}
+                        </Text>
+                        <View style={styles.statusRow}>
+                          <Text variant="bodyMedium">Estado: {statusLabels[listing.status]}</Text>
+                          {listing.status === 'sold' ? (
+                            <Badge label="Vendida" backgroundColor={c.surfaceMuted} color={c.ink} />
+                          ) : null}
+                        </View>
+                        <View style={styles.actionRow}>
+                          {listing.status === 'active' ? (
+                            <AppButton
+                              label="Marcar como vendida"
+                              variant="secondary"
+                              disabled={busyListingId !== null}
+                              loading={busyListingId === listing.id}
+                              onPress={() => void markAsSold(listing.id)}
+                            />
+                          ) : null}
+                          <AppButton
+                            label={
+                              listing.status === 'removed'
+                                ? 'Completar eliminación'
+                                : 'Eliminar publicación'
+                            }
+                            variant="danger"
+                            disabled={busyListingId !== null}
+                            loading={busyListingId === listing.id}
+                            onPress={() => confirmDelete(listing)}
+                          />
+                        </View>
+                      </Card.Content>
+                    </Card>
+                  ))
+                )}
+                {listingActionError ? (
+                  <Text accessibilityRole="alert" style={{ color: c.danger }}>
+                    {listingActionError}
+                  </Text>
+                ) : null}
+              </Card.Content>
+            </Card>
           </>
         ) : null}
 
-        {userId && adminQuery.data === true ? <AdminPanel /> : null}
+        {userId && adminQuery.data === true ? (
+          <Card mode="outlined" style={[styles.sectionCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Card.Content>
+              <View style={styles.sectionHeading}>
+                <MaterialCommunityIcons name="shield-account-outline" size={24} color={c.primary} />
+                <SectionHeader title="Administración" />
+              </View>
+              <AdminPanel />
+            </Card.Content>
+          </Card>
+        ) : null}
         {adminQuery.isError ? (
           <HelperText type="error" visible>
             No se pudo comprobar si esta cuenta tiene permisos administrativos.
@@ -494,19 +557,17 @@ export function ProfileScreen() {
         ) : null}
 
         {signOutError ? (
-          <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
+          <Text accessibilityRole="alert" style={{ color: c.danger }}>
             {signOutError}
           </Text>
         ) : null}
-        <Button
-          mode="outlined"
-          contentStyle={styles.buttonContent}
+        <AppButton
+          label="Cerrar sesión"
+          variant="secondary"
           onPress={() => void handleSignOut()}
           loading={isSigningOut}
           disabled={isSigningOut}
-        >
-          Cerrar sesión
-        </Button>
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -517,37 +578,76 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 14,
-    padding: 20,
+    gap: space.md,
+    padding: space.lg,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: space.md,
+    padding: space.lg,
+  },
+  avatar: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
+  },
+  avatarText: {
+    fontFamily: font.heavy,
+    fontSize: 22,
+  },
+  profileIdentity: {
+    flex: 1,
+    gap: space.xs,
+  },
+  email: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  sectionCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+  },
+  sectionContent: {
+    gap: space.md,
+    padding: space.lg,
+  },
+  sectionHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.sm,
   },
   form: {
-    gap: 10,
+    gap: space.md,
   },
   switchRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    minHeight: 52,
   },
   statusRow: {
     alignItems: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  buttonContent: {
-    minHeight: 48,
+    gap: space.sm,
   },
   listingCard: {
-    gap: 6,
+    gap: space.sm,
+  },
+  listingCardContainer: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginBottom: space.sm,
   },
   actionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  state: {
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
+    gap: space.sm,
   },
 });

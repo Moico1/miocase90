@@ -1,9 +1,13 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '@/components/BrandLogo';
+import { AppButton } from '@/design/AppButton';
+import { ScreenHeader } from '@/design/ScreenHeader';
+import { palette, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 
 type AuthStatusProps = {
   title: string;
@@ -22,30 +26,31 @@ export function AuthStatus({
   onAction,
   children,
 }: AuthStatusProps) {
-  const theme = useTheme();
+  const c = useTokens();
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      style={[styles.safeArea, { backgroundColor: c.background }]}
     >
       <View style={styles.content}>
         <View style={styles.brand}>
           <BrandLogo variant="full" />
+          <View style={styles.brandStripe}>
+            <View style={[styles.stripeSegment, { backgroundColor: palette.red }]} />
+            <View style={[styles.stripeSegment, { backgroundColor: palette.yellow }]} />
+            <View style={[styles.stripeSegment, { backgroundColor: palette.green }]} />
+          </View>
         </View>
         {loading ? <ActivityIndicator size="large" /> : null}
-        <Text variant="headlineSmall" style={styles.title}>
-          {title}
-        </Text>
+        <ScreenHeader title={title} />
         {body ? (
-          <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+          <Text variant="bodyLarge" style={{ color: c.inkMuted }}>
             {body}
           </Text>
         ) : null}
         {children}
         {actionLabel && onAction ? (
-          <Button mode="contained" onPress={onAction}>
-            {actionLabel}
-          </Button>
+          <AppButton label={actionLabel} onPress={onAction} />
         ) : null}
       </View>
     </SafeAreaView>
@@ -58,14 +63,23 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    gap: 16,
+    gap: space.lg,
     justifyContent: 'center',
     padding: 24,
   },
   brand: {
     alignSelf: 'center',
+    alignItems: 'center',
+    gap: space.sm,
   },
-  title: {
-    textAlign: 'center',
+  brandStripe: {
+    borderRadius: 999,
+    flexDirection: 'row',
+    height: 3,
+    overflow: 'hidden',
+    width: 120,
+  },
+  stripeSegment: {
+    flex: 1,
   },
 });

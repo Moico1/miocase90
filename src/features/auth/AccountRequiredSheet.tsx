@@ -1,5 +1,9 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { Button, Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
+
+import { AppButton } from '@/design/AppButton';
+import { radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 
 type AccountRequiredSheetProps = {
   visible: boolean;
@@ -14,7 +18,7 @@ export function AccountRequiredSheet({
   onRegister,
   onSignIn,
 }: AccountRequiredSheetProps) {
-  const theme = useTheme();
+  const c = useTokens();
 
   return (
     <Modal
@@ -28,20 +32,16 @@ export function AccountRequiredSheet({
           accessibilityRole="button"
           accessibilityLabel="Cerrar"
           onPress={onDismiss}
-          style={styles.backdrop}
+          style={[styles.backdrop, { backgroundColor: c.ink, opacity: 0.35 }]}
         />
-        <View style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
-          <View style={[styles.handle, { backgroundColor: theme.colors.outlineVariant }]} />
+        <View style={[styles.sheet, { backgroundColor: c.surface }]}>
+          <View style={[styles.handle, { backgroundColor: c.border }]} />
           <Text variant="headlineSmall">Crea tu cuenta gratis para continuar</Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          <Text variant="bodyMedium" style={{ color: c.inkMuted }}>
             Regístrate para contactar, guardar favoritos, reportar o calificar publicaciones.
           </Text>
-          <Button mode="contained" onPress={onRegister}>
-            Registrarme
-          </Button>
-          <Button mode="outlined" onPress={onSignIn}>
-            Ya tengo cuenta
-          </Button>
+          <AppButton label="Registrarme" onPress={onRegister} />
+          <AppButton label="Ya tengo cuenta" variant="secondary" onPress={onSignIn} />
         </View>
       </View>
     </Modal>
@@ -55,20 +55,19 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#00000066',
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    gap: 14,
-    padding: 24,
-    paddingBottom: 36,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    gap: space.md,
+    padding: space.xl,
+    paddingBottom: space.xxl,
   },
   handle: {
     alignSelf: 'center',
-    borderRadius: 2,
+    borderRadius: radius.pill,
     height: 4,
-    marginBottom: 4,
+    marginBottom: space.xs,
     width: 40,
   },
 });

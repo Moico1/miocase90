@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
-import { Button, HelperText, RadioButton, Text, TextInput } from 'react-native-paper';
+import { HelperText, RadioButton, Text } from 'react-native-paper';
 import { zodResolver } from '@hookform/resolvers/zod';
 
+import { AppButton } from '@/design/AppButton';
+import { TextField } from '@/design/TextField';
 import { AuthPage } from '@/features/auth/AuthPage';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getErrorMessage } from '@/features/auth/errorMessage';
@@ -75,8 +77,12 @@ export default function SignUpScreen() {
         name="accountType"
         render={({ field: { onChange, value } }) => (
           <RadioButton.Group value={value} onValueChange={onChange}>
-            <RadioButton.Item label="Comprar" value="buyer" />
-            <RadioButton.Item label="Vender (requiere aprobación)" value="seller" />
+            <RadioButton.Item label="Comprar" value="buyer" style={styles.radioItem} />
+            <RadioButton.Item
+              label="Vender (requiere aprobación)"
+              value="seller"
+              style={styles.radioItem}
+            />
           </RadioButton.Group>
         )}
       />
@@ -84,110 +90,85 @@ export default function SignUpScreen() {
         control={control}
         name="displayName"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Nombre para mostrar"
-            mode="outlined"
-            contentStyle={styles.inputContent}
+            style={styles.input}
             autoComplete="name"
             maxLength={60}
-            error={Boolean(errors.displayName)}
+            error={errors.displayName?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.displayName)}>
-        {errors.displayName?.message}
-      </HelperText>
-
       <Controller
         control={control}
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Correo electrónico"
-            mode="outlined"
-            contentStyle={styles.inputContent}
+            style={styles.input}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
             autoCorrect={false}
-            error={Boolean(errors.email)}
+            error={errors.email?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.email)}>
-        {errors.email?.message}
-      </HelperText>
-
       <Controller
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Contraseña (mínimo 8 caracteres)"
-            mode="outlined"
-            contentStyle={styles.inputContent}
+            style={styles.input}
             secureTextEntry
             autoComplete="new-password"
-            error={Boolean(errors.password)}
+            error={errors.password?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.password)}>
-        {errors.password?.message}
-      </HelperText>
-
       <Controller
         control={control}
         name="passwordConfirmation"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Repite tu contraseña"
-            mode="outlined"
-            contentStyle={styles.inputContent}
+            style={styles.input}
             secureTextEntry
             autoComplete="new-password"
-            error={Boolean(errors.passwordConfirmation)}
+            error={errors.passwordConfirmation?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.passwordConfirmation)}>
-        {errors.passwordConfirmation?.message}
-      </HelperText>
-
       {serverError ? <HelperText type="error">{serverError}</HelperText> : null}
-      <Button
-        mode="contained"
-        contentStyle={styles.buttonContent}
+      <AppButton
+        label="Registrarme"
         loading={isSubmitting}
         disabled={isSubmitting}
         onPress={() => void handleSubmit(onSubmit)()}
-      >
-        Registrarme
-      </Button>
-      <Button
-        mode="text"
-        contentStyle={styles.buttonContent}
+      />
+      <AppButton
+        label="Ya tengo cuenta"
+        variant="secondary"
         onPress={() => router.replace({ pathname: '/sign-in', params: { returnTo } })}
-      >
-        Ya tengo cuenta
-      </Button>
+      />
     </AuthPage>
   );
 }
 
 const styles = {
-  inputContent: { minHeight: 50 },
-  buttonContent: { minHeight: 48 },
+  input: { minHeight: 52 },
+  radioItem: { minHeight: 48 },
 };

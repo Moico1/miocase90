@@ -4,8 +4,13 @@ import * as Clipboard from 'expo-clipboard';
 import * as ExpoLinking from 'expo-linking';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Button, Card, Divider, Text, useTheme } from 'react-native-paper';
+import { Card, Divider, Text } from 'react-native-paper';
 
+import { AppButton } from '@/design/AppButton';
+import { EmptyState } from '@/design/EmptyState';
+import { SectionHeader } from '@/design/SectionHeader';
+import { radius, space } from '@/design/tokens';
+import { useTokens } from '@/design/useTokens';
 import {
   fetchOpenReports,
   fetchOpenSocialReports,
@@ -35,7 +40,7 @@ function formatDate(value: string): string {
 }
 
 export function AdminPanel() {
-  const theme = useTheme();
+  const c = useTokens();
   const { session } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -273,54 +278,55 @@ export function AdminPanel() {
   return (
     <View style={styles.container}>
       <Divider />
-      <Text variant="headlineSmall">Administración</Text>
-      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+      <SectionHeader title="Administración" />
+      <Text variant="bodyMedium" style={{ color: c.inkMuted }}>
         Las decisiones se validan también en Supabase.
       </Text>
 
       {errorMessage ? (
-        <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
+        <Text accessibilityRole="alert" style={{ color: c.danger }}>
           {errorMessage}
         </Text>
       ) : null}
       {successMessage ? (
-        <Text accessibilityRole="alert" style={{ color: theme.colors.primary }}>
+        <Text accessibilityRole="alert" style={{ color: c.primary }}>
           {successMessage}
         </Text>
       ) : null}
 
-      <Text variant="titleLarge">Solicitudes de vendedores</Text>
+      <SectionHeader title="Solicitudes de vendedores" />
       {pendingQuery.isPending ? (
         <ActivityIndicator />
       ) : pendingQuery.isError ? (
         <View style={styles.state}>
           <Text variant="bodyMedium">No se pudieron cargar las cuentas pendientes.</Text>
-          <Button onPress={() => void pendingQuery.refetch()}>Reintentar</Button>
+          <AppButton label="Reintentar" variant="secondary" onPress={() => void pendingQuery.refetch()} />
         </View>
       ) : pendingQuery.data.length === 0 ? (
-        <Text variant="bodyMedium">No hay solicitudes pendientes.</Text>
+        <EmptyState
+          title="No hay solicitudes pendientes"
+          message="Las nuevas solicitudes de vendedores aparecerán aquí."
+          icon="account-check-outline"
+        />
       ) : (
         pendingQuery.data.map((member: PendingMember) => (
-          <Card key={member.userId} mode="outlined">
+          <Card key={member.userId} mode="outlined" style={styles.dataCard}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium">{member.displayName}</Text>
               <Text variant="bodySmall">Solicitó vender: {formatDate(member.createdAt)}</Text>
               <View style={styles.actionRow}>
-                <Button
-                  mode="contained"
+                <AppButton
+                  label="Aprobar vendedor"
                   disabled={busyMembershipId !== null}
                   loading={busyMembershipId === member.userId}
                   onPress={() => void decideMembership(member.userId, 'verified')}
-                >
-                  Aprobar vendedor
-                </Button>
-                <Button
-                  mode="outlined"
+                />
+                <AppButton
+                  label="Rechazar solicitud"
+                  variant="danger"
                   disabled={busyMembershipId !== null}
                   onPress={() => void decideMembership(member.userId, 'rejected')}
-                >
-                  Rechazar solicitud
-                </Button>
+                />
               </View>
             </Card.Content>
           </Card>
@@ -328,56 +334,51 @@ export function AdminPanel() {
       )}
 
       <Divider />
-      <Text variant="titleLarge">Códigos de invitación</Text>
+      <SectionHeader title="Códigos de invitación" />
       <Text variant="bodyMedium">
         Cada código se puede usar una sola vez y vence en siete días.
       </Text>
       {inviteCode ? (
-        <Card mode="outlined">
+        <Card mode="outlined" style={styles.dataCard}>
           <Card.Content style={styles.cardContent}>
             <Text variant="titleMedium" selectable>
               {inviteCode}
             </Text>
-            <Button
-              mode="contained"
+            <AppButton
+              label="Copiar y ocultar código"
               onPress={() => void copyInvite()}
               loading={isCopyingInvite}
               disabled={isCopyingInvite}
-            >
-              Copiar y ocultar código
-            </Button>
+            />
           </Card.Content>
         </Card>
       ) : (
-        <Button
-          mode="outlined"
+        <AppButton
+          label="Generar código"
+          variant="secondary"
           onPress={() => void generateInvite()}
           loading={isGeneratingInvite}
           disabled={isGeneratingInvite}
-        >
-          Generar código
-        </Button>
+        />
       )}
 
       <Divider />
-      <Text variant="titleLarge">Verificaciones de WhatsApp</Text>
+      <SectionHeader title="Verificaciones de WhatsApp" />
       <Text variant="bodyMedium">
         Abre el chat con el vendedor y envíale el código de cuatro dígitos que generes.
       </Text>
       {issuedWhatsappCode ? (
-        <Card mode="outlined">
+        <Card mode="outlined" style={styles.dataCard}>
           <Card.Content style={styles.cardContent}>
             <Text variant="titleMedium" accessibilityLabel="Código de un solo uso" selectable>
               Código: {issuedWhatsappCode.code}
             </Text>
-            <Button
-              mode="contained"
+            <AppButton
+              label="Copiar código y ocultar"
               onPress={() => void copyWhatsappCode()}
               loading={isCopyingWhatsappCode}
               disabled={isCopyingWhatsappCode}
-            >
-              Copiar código y ocultar
-            </Button>
+            />
           </Card.Content>
         </Card>
       ) : null}
@@ -386,13 +387,21 @@ export function AdminPanel() {
       ) : whatsappVerificationsQuery.isError ? (
         <View style={styles.state}>
           <Text variant="bodyMedium">No se pudieron cargar las solicitudes de WhatsApp.</Text>
-          <Button onPress={() => void whatsappVerificationsQuery.refetch()}>Reintentar</Button>
+          <AppButton
+            label="Reintentar"
+            variant="secondary"
+            onPress={() => void whatsappVerificationsQuery.refetch()}
+          />
         </View>
       ) : whatsappVerificationsQuery.data.length === 0 ? (
-        <Text variant="bodyMedium">No hay verificaciones de WhatsApp pendientes.</Text>
+        <EmptyState
+          title="No hay verificaciones pendientes"
+          message="Las solicitudes de WhatsApp aparecerán aquí."
+          icon="whatsapp"
+        />
       ) : (
         whatsappVerificationsQuery.data.map((request: WhatsAppVerificationRequest) => (
-          <Card key={request.id} mode="outlined">
+          <Card key={request.id} mode="outlined" style={styles.dataCard}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium">{request.displayName}</Text>
               <Text variant="bodyMedium">{request.requestedNumber}</Text>
@@ -401,23 +410,18 @@ export function AdminPanel() {
                 Estado: {request.status === 'pending' ? 'Pendiente de código' : 'Código enviado'}
               </Text>
               <View style={styles.actionRow}>
-                <Button
-                  compact
-                  mode="outlined"
+                <AppButton
+                  label="Abrir en WhatsApp"
+                  variant="secondary"
                   disabled={busyWhatsappRequestId !== null}
                   onPress={() => void openWhatsapp(request)}
-                >
-                  Abrir en WhatsApp
-                </Button>
-                <Button
-                  compact
-                  mode="contained"
+                />
+                <AppButton
+                  label="Generar código de 4 dígitos"
                   disabled={busyWhatsappRequestId !== null}
                   loading={busyWhatsappRequestId === request.id}
                   onPress={() => void issueWhatsappCode(request.id)}
-                >
-                  Generar código de 4 dígitos
-                </Button>
+                />
               </View>
             </Card.Content>
           </Card>
@@ -425,19 +429,23 @@ export function AdminPanel() {
       )}
 
       <Divider />
-      <Text variant="titleLarge">Reportes abiertos</Text>
+      <SectionHeader title="Reportes abiertos" />
       {reportsQuery.isPending ? (
         <ActivityIndicator />
       ) : reportsQuery.isError ? (
         <View style={styles.state}>
           <Text variant="bodyMedium">No se pudieron cargar los reportes abiertos.</Text>
-          <Button onPress={() => void reportsQuery.refetch()}>Reintentar</Button>
+          <AppButton label="Reintentar" variant="secondary" onPress={() => void reportsQuery.refetch()} />
         </View>
       ) : reportsQuery.data.length === 0 ? (
-        <Text variant="bodyMedium">No hay reportes abiertos.</Text>
+        <EmptyState
+          title="No hay reportes abiertos"
+          message="Los reportes de publicaciones aparecerán aquí."
+          icon="flag-checkered"
+        />
       ) : (
         reportsQuery.data.map((report: OpenReport) => (
-          <Card key={report.id} mode="outlined">
+          <Card key={report.id} mode="outlined" style={styles.dataCard}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium">{report.listingTitle}</Text>
               <Text variant="bodySmall">Motivo: {report.reason}</Text>
@@ -447,39 +455,35 @@ export function AdminPanel() {
               <Text variant="bodySmall">
                 Estado de la publicación: {listingStatusLabels[report.listingStatus]}
               </Text>
-              <Button
+              <AppButton
+                label="Ver publicación"
+                variant="secondary"
                 onPress={() =>
                   router.push({
                     pathname: '/listing/[id]',
                     params: { id: report.listingId },
                   })
                 }
-              >
-                Ver publicación
-              </Button>
-              <Button
-                mode="contained"
+              />
+              <AppButton
+                label="Ocultar y revisar"
                 disabled={busyReportId !== null}
                 loading={busyReportId === report.id}
                 onPress={() => void decideReport(report, 'reviewed', true)}
-              >
-                Ocultar y revisar
-              </Button>
+              />
               <View style={styles.actionRow}>
-                <Button
-                  compact
+                <AppButton
+                  label="Revisar sin ocultar"
+                  variant="secondary"
                   disabled={busyReportId !== null}
                   onPress={() => void decideReport(report, 'reviewed', false)}
-                >
-                  Revisar sin ocultar
-                </Button>
-                <Button
-                  compact
+                />
+                <AppButton
+                  label="Descartar"
+                  variant="danger"
                   disabled={busyReportId !== null}
                   onPress={() => void decideReport(report, 'dismissed', false)}
-                >
-                  Descartar
-                </Button>
+                />
               </View>
             </Card.Content>
           </Card>
@@ -487,19 +491,27 @@ export function AdminPanel() {
       )}
 
       <Divider />
-      <Text variant="titleLarge">Reportes de tiendas y comentarios</Text>
+      <SectionHeader title="Reportes de tiendas y comentarios" />
       {socialReportsQuery.isPending ? (
         <ActivityIndicator />
       ) : socialReportsQuery.isError ? (
         <View style={styles.state}>
           <Text variant="bodyMedium">No se pudieron cargar los reportes sociales.</Text>
-          <Button onPress={() => void socialReportsQuery.refetch()}>Reintentar</Button>
+          <AppButton
+            label="Reintentar"
+            variant="secondary"
+            onPress={() => void socialReportsQuery.refetch()}
+          />
         </View>
       ) : socialReportsQuery.data.length === 0 ? (
-        <Text variant="bodyMedium">No hay reportes sociales abiertos.</Text>
+        <EmptyState
+          title="No hay reportes sociales abiertos"
+          message="Los reportes de tiendas, reseñas y comentarios aparecerán aquí."
+          icon="flag-checkered"
+        />
       ) : (
         socialReportsQuery.data.map((report) => (
-          <Card key={report.id} mode="outlined">
+          <Card key={report.id} mode="outlined" style={styles.dataCard}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium">
                 {report.targetType === 'store'
@@ -511,29 +523,25 @@ export function AdminPanel() {
               {report.targetTitle ? <Text variant="bodyMedium">{report.targetTitle}</Text> : null}
               <Text variant="bodySmall">Motivo: {report.reason}</Text>
               <Text variant="bodySmall">Reportado: {formatDate(report.createdAt)}</Text>
-              <Button
-                mode="contained"
+              <AppButton
+                label="Ocultar y revisar"
                 disabled={busyReportId !== null}
                 loading={busyReportId === report.id}
                 onPress={() => void decideSocialReport(report, 'reviewed', true)}
-              >
-                Ocultar y revisar
-              </Button>
+              />
               <View style={styles.actionRow}>
-                <Button
-                  compact
+                <AppButton
+                  label="Revisar sin ocultar"
+                  variant="secondary"
                   disabled={busyReportId !== null}
                   onPress={() => void decideSocialReport(report, 'reviewed', false)}
-                >
-                  Revisar sin ocultar
-                </Button>
-                <Button
-                  compact
+                />
+                <AppButton
+                  label="Descartar"
+                  variant="danger"
                   disabled={busyReportId !== null}
                   onPress={() => void decideSocialReport(report, 'dismissed', false)}
-                >
-                  Descartar
-                </Button>
+                />
               </View>
             </Card.Content>
           </Card>
@@ -545,20 +553,24 @@ export function AdminPanel() {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
-    paddingVertical: 20,
+    gap: space.md,
+    paddingVertical: space.xl,
+  },
+  dataCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
   },
   cardContent: {
-    gap: 8,
+    gap: space.md,
   },
   actionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: space.sm,
   },
   state: {
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
+    gap: space.md,
+    padding: space.lg,
   },
 });

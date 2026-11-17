@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
-import { Button, HelperText, TextInput } from 'react-native-paper';
+import { HelperText } from 'react-native-paper';
 import { zodResolver } from '@hookform/resolvers/zod';
 
+import { AppButton } from '@/design/AppButton';
+import { TextField } from '@/design/TextField';
 import { AuthPage } from '@/features/auth/AuthPage';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getErrorMessage } from '@/features/auth/errorMessage';
@@ -51,68 +53,52 @@ export default function SignInScreen() {
         control={control}
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Correo electrónico"
-            mode="outlined"
-            contentStyle={styles.inputContent}
+            style={styles.input}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
             autoCorrect={false}
-            error={Boolean(errors.email)}
+            error={errors.email?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.email)}>
-        {errors.email?.message}
-      </HelperText>
-
       <Controller
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+          <TextField
             label="Contraseña"
-            mode="outlined"
-            contentStyle={styles.inputContent}
+            style={styles.input}
             secureTextEntry
             autoComplete="current-password"
-            error={Boolean(errors.password)}
+            error={errors.password?.message}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
           />
         )}
       />
-      <HelperText type="error" visible={Boolean(errors.password)}>
-        {errors.password?.message}
-      </HelperText>
-
       {serverError ? <HelperText type="error">{serverError}</HelperText> : null}
-      <Button
-        mode="contained"
-        contentStyle={styles.buttonContent}
+      <AppButton
+        label="Entrar"
         loading={isSubmitting}
         disabled={isSubmitting}
         onPress={() => void handleSubmit(onSubmit)()}
-      >
-        Entrar
-      </Button>
-      <Button
-        mode="text"
-        contentStyle={styles.buttonContent}
+      />
+      <AppButton
+        label="Crear una cuenta"
+        variant="secondary"
         onPress={() => router.push({ pathname: '/sign-up', params: { returnTo } })}
-      >
-        Crear una cuenta
-      </Button>
+      />
     </AuthPage>
   );
 }
 
 const styles = {
-  inputContent: { minHeight: 50 },
-  buttonContent: { minHeight: 48 },
+  input: { minHeight: 52 },
 };
