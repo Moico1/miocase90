@@ -137,6 +137,7 @@ Aplicar cronológicamente:
 6. `20261115220000_public_browsing_and_seller_roles.sql`: catálogo público controlado, separación de rol comprador/estado vendedor, favoritos, calificaciones, contacto limitado y precio anterior.
 7. `20261116210000_store_profiles_and_social_features.sql`: perfiles de tienda y logos, reseñas, comentarios, seguimiento, bloqueos, favoritos privados y moderación social.
 8. `20261116230000_whatsapp_phone_verification.sql`: verificación con códigos de cuatro dígitos, límite de intentos, vigencia de 24 horas y restricción de contacto a números verificados.
+9. `20261117102000_grant_previous_price_insert.sql`: permite a vendedores autenticados incluir el precio anterior al crear un borrador de publicación.
 
 Comprobar el acceso anónimo y los límites con `supabase/tests/anon_access.sql` desde SQL Editor después de aplicar las migraciones.
 

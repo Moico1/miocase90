@@ -70,7 +70,7 @@ export function PublishListingScreen() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const categoriesQuery = useQuery({
-    queryKey: ['listing-categories'],
+    queryKey: ['listing-categories', 'publishing'],
     enabled: Boolean(session?.user.id),
     queryFn: async (): Promise<Category[]> => {
       const { data, error } = await getSupabaseClient()

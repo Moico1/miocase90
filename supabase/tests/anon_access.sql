@@ -78,6 +78,14 @@ begin
     or has_column_privilege('authenticated', 'public.profile_contacts', 'show_whatsapp', 'UPDATE') then
     raise exception 'authenticated puede cambiar WhatsApp sin pasar por las funciones seguras';
   end if;
+  if not has_column_privilege(
+    'authenticated',
+    'public.listings',
+    'previous_price',
+    'INSERT'
+  ) then
+    raise exception 'authenticated no puede guardar el precio anterior de una publicación';
+  end if;
 
   if exists (
     select 1
