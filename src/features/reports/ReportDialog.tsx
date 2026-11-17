@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Dialog, HelperText, Portal, Text, TextInput } from 'react-native-paper';
 import { z } from 'zod';
@@ -39,12 +39,11 @@ export function ReportDialog({
     formState: { errors },
     handleSubmit,
     reset,
-    watch,
   } = useForm<ReportFormInput, undefined, ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: { reason: '' },
   });
-  const reasonLength = watch('reason').length;
+  const reasonLength = useWatch({ control, name: 'reason', defaultValue: '' }).length;
 
   function dismiss() {
     setErrorMessage(null);

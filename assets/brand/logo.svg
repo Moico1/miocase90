@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" role="img" aria-labelledby="title">
+  <title id="title">Mío CASE</title>
+  <g fill="none" stroke="#11100e" stroke-linecap="round" stroke-linejoin="round" stroke-width="18">
+    <path d="M56 178 267 48l372 8-213 137-370-15Z"/>
+    <path d="m56 178 370 15v266L58 474l-2-296Z"/>
+    <path d="m426 193 213-137 4 335-217 68V193Z"/>
+    <path d="m267 48 109 1-213 137M376 49l126 3-210 137"/>
+    <path d="m359 58 51 3-1 116-51 8-2-127Z"/>
+    <path d="m97 412 83-2 4 43-82 3-5-44Z"/>
+  </g>
+  <g fill="#11100e" font-family="Playfair Display, Georgia, serif" font-style="italic" font-weight="900" text-anchor="middle">
+    <text x="241" y="292" font-size="72">Mío</text>
+    <text x="241" y="388" font-size="82">CASE</text>
+  </g>
+</svg>

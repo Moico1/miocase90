@@ -40,17 +40,17 @@ export async function publishListing(
   onProgress: (progress: PublishProgress) => void
 ): Promise<string> {
   const supabase = getSupabaseClient();
-  const { data: membership, error: membershipError } = await supabase
-    .from('community_memberships')
-    .select('status')
-    .eq('user_id', userId)
+  const { data: seller, error: membershipError } = await supabase
+    .from('profiles')
+    .select('seller_status')
+    .eq('id', userId)
     .maybeSingle();
 
   if (membershipError) {
-    throw new Error(`No se pudo comprobar tu membresía. ${getErrorDetails(membershipError)}`);
+    throw new Error(`No se pudo comprobar tu estado de vendedor. ${getErrorDetails(membershipError)}`);
   }
-  if (membership?.status !== 'verified') {
-    throw new Error('Solo las cuentas verificadas pueden publicar productos.');
+  if (seller?.seller_status !== 'approved') {
+    throw new Error('Solo los vendedores aprobados pueden publicar productos.');
   }
 
   const { data: listing, error: listingError } = await supabase
@@ -61,6 +61,7 @@ export async function publishListing(
       title: values.title,
       description: values.description,
       price: values.price,
+      previous_price: values.previousPrice,
       currency: values.currency,
       status: 'draft',
     })
@@ -72,7 +73,7 @@ export async function publishListing(
   }
 
   const listingId = listing.id;
-  const paths = photos.map((_, index) => `${userId}/${listingId}/photo-${index + 1}.jpg`);
+  const paths = photos.map((_, index) => `${listingId}/photo-${index + 1}.jpg`);
   const attemptedPaths: string[] = [];
   let publicationOutcomeIsUncertain = false;
 

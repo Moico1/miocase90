@@ -72,8 +72,8 @@ export function AdminPanel() {
       ]);
       setSuccessMessage(
         decision === 'verified'
-          ? 'La membresía fue aprobada.'
-          : 'La membresía fue rechazada.'
+          ? 'El vendedor fue aprobado.'
+          : 'La solicitud de vendedor fue rechazada.'
       );
     } catch {
       setErrorMessage('No se pudo actualizar la membresía. Comprueba tu conexión e inténtalo otra vez.');
@@ -180,7 +180,7 @@ export function AdminPanel() {
         </Text>
       ) : null}
 
-      <Text variant="titleLarge">Membresías pendientes</Text>
+      <Text variant="titleLarge">Solicitudes de vendedores</Text>
       {pendingQuery.isPending ? (
         <ActivityIndicator />
       ) : pendingQuery.isError ? (
@@ -189,14 +189,13 @@ export function AdminPanel() {
           <Button onPress={() => void pendingQuery.refetch()}>Reintentar</Button>
         </View>
       ) : pendingQuery.data.length === 0 ? (
-        <Text variant="bodyMedium">No hay membresías pendientes.</Text>
+        <Text variant="bodyMedium">No hay solicitudes pendientes.</Text>
       ) : (
         pendingQuery.data.map((member: PendingMember) => (
           <Card key={member.userId} mode="outlined">
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium">{member.displayName}</Text>
-              <Text variant="bodySmall">Solicitud: {formatDate(member.createdAt)}</Text>
-              <Text variant="bodySmall">ID: {member.userId.slice(0, 8)}</Text>
+              <Text variant="bodySmall">Solicitó vender: {formatDate(member.createdAt)}</Text>
               <View style={styles.actionRow}>
                 <Button
                   mode="contained"
@@ -204,14 +203,14 @@ export function AdminPanel() {
                   loading={busyMembershipId === member.userId}
                   onPress={() => void decideMembership(member.userId, 'verified')}
                 >
-                  Aprobar
+                  Aprobar vendedor
                 </Button>
                 <Button
                   mode="outlined"
                   disabled={busyMembershipId !== null}
                   onPress={() => void decideMembership(member.userId, 'rejected')}
                 >
-                  Rechazar
+                  Rechazar solicitud
                 </Button>
               </View>
             </Card.Content>

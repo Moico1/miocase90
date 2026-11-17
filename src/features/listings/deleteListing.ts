@@ -31,13 +31,14 @@ export async function deleteOwnListing(userId: string, listingId: string): Promi
   }
 
   try {
-    const folder = `${userId}/${listingId}`;
-    const paths = await listStoredFiles(folder);
+    const folders = [listingId, `${userId}/${listingId}`];
+    const paths = (await Promise.all(folders.map(listStoredFiles))).flat();
+    const uniquePaths = [...new Set(paths)];
 
-    if (paths.length > 0) {
+    if (uniquePaths.length > 0) {
       const { error: removeError } = await client.storage
         .from(PHOTO_BUCKET)
-        .remove(paths);
+        .remove(uniquePaths);
       if (removeError) throw removeError;
     }
 

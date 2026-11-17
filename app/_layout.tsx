@@ -1,19 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { miocaseDarkTheme, miocaseLightTheme } from '@/theme';
 
-export { ErrorBoundary } from 'expo-router';
+if (Platform.OS !== 'web') {
+  void SplashScreen.preventAutoHideAsync();
+}
 
-export const unstable_settings = {
-  anchor: 'index',
-};
+export { ErrorBoundary } from 'expo-router';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,8 +28,20 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    PlayfairDisplay_900Black_Italic: require('@expo-google-fonts/playfair-display/900Black_Italic/PlayfairDisplay_900Black_Italic.ttf'),
+  });
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? miocaseDarkTheme : miocaseLightTheme;
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && Platform.OS !== 'web') {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontError, fontsLoaded]);
+
+  if (fontError) throw fontError;
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>

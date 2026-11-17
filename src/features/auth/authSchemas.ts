@@ -17,6 +17,7 @@ export const signUpSchema = z
     email: emailSchema,
     password: z.string().min(8, 'Usa al menos 8 caracteres.'),
     passwordConfirmation: z.string().min(1, 'Confirma tu contraseña.'),
+    accountType: z.enum(['buyer', 'seller']),
   })
   .refine((values) => values.password === values.passwordConfirmation, {
     path: ['passwordConfirmation'],

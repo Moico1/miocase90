@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/BrandLogo';
+
 type AuthStatusProps = {
   title: string;
   body?: string;
@@ -27,6 +29,9 @@ export function AuthStatus({
       style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
     >
       <View style={styles.content}>
+        <View style={styles.brand}>
+          <BrandLogo variant="full" />
+        </View>
         {loading ? <ActivityIndicator size="large" /> : null}
         <Text variant="headlineSmall" style={styles.title}>
           {title}
@@ -56,6 +61,9 @@ const styles = StyleSheet.create({
     gap: 16,
     justifyContent: 'center',
     padding: 24,
+  },
+  brand: {
+    alignSelf: 'center',
   },
   title: {
     textAlign: 'center',

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { SymbolView } from 'expo-symbols';
@@ -100,12 +100,14 @@ export function PublishListingScreen() {
     defaultValues: {
       title: '',
       price: '',
+      previousPrice: '',
       currency: 'BOB',
       description: '',
       categoryId: 0,
       photoCount: 0,
     },
   });
+  const currency = useWatch({ control, name: 'currency' });
 
   useEffect(() => {
     const firstCategory = categoriesQuery.data?.[0];
@@ -220,6 +222,7 @@ export function PublishListingScreen() {
       reset({
         title: '',
         price: '',
+        previousPrice: '',
         currency: 'BOB',
         description: '',
         categoryId: categoriesQuery.data?.[0]?.id ?? 0,
@@ -313,26 +316,25 @@ export function PublishListingScreen() {
             {errors.title?.message}
           </HelperText>
 
-          <View style={styles.priceRow}>
-            <View style={styles.priceInput}>
-              <Controller
-                control={control}
-                name="price"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    label="Precio"
-                    mode="outlined"
-                    contentStyle={styles.inputContent}
-                    keyboardType="decimal-pad"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    error={Boolean(errors.price)}
-                    disabled={busy}
-                  />
-                )}
-              />
-            </View>
+          <View style={styles.priceSection}>
+            <Controller
+              control={control}
+              name="price"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  label="Precio"
+                  mode="outlined"
+                  contentStyle={styles.inputContent}
+                  keyboardType="decimal-pad"
+                  left={<TextInput.Affix text={currency === 'BOB' ? 'Bs' : currency} />}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={Boolean(errors.price)}
+                  disabled={busy}
+                />
+              )}
+            />
             <Controller
               control={control}
               name="currency"
@@ -359,6 +361,26 @@ export function PublishListingScreen() {
           </View>
           <HelperText type="error" visible={Boolean(errors.price)}>
             {errors.price?.message}
+          </HelperText>
+          <Controller
+            control={control}
+            name="previousPrice"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                label="Precio anterior (opcional)"
+                mode="outlined"
+                contentStyle={styles.inputContent}
+                keyboardType="decimal-pad"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={Boolean(errors.previousPrice)}
+                disabled={busy}
+              />
+            )}
+          />
+          <HelperText type="error" visible={Boolean(errors.previousPrice)}>
+            {errors.previousPrice?.message}
           </HelperText>
 
           <Text variant="titleMedium">Categoría</Text>
@@ -441,6 +463,9 @@ export function PublishListingScreen() {
           >
             Elegir fotos
           </Button>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            Mío CASE solo accede a las fotos que elijas para publicar productos.
+          </Text>
           {photoProgress ? <Text variant="bodySmall">{photoProgress}</Text> : null}
           {photos.length > 0 ? (
             <View style={styles.photoList}>
@@ -535,26 +560,21 @@ const styles = StyleSheet.create({
   buttonContent: {
     minHeight: 52,
   },
-  priceRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  priceInput: {
-    flex: 1,
+  priceSection: {
+    gap: 4,
   },
   currencyOptions: {
     alignItems: 'center',
     flexDirection: 'row',
+    width: '100%',
   },
   currencyOption: {
+    flex: 1,
+    minWidth: 0,
     paddingHorizontal: 0,
-    width: 58,
   },
   currencyLabel: {
     fontSize: 12,
-    marginLeft: -8,
-    marginRight: -8,
   },
   categoryList: {
     borderColor: '#80808055',

@@ -30,7 +30,7 @@ export default function PendingScreen() {
     defaultValues: { code: '' },
   });
 
-  if (!session) return <Redirect href="/sign-in" />;
+  if (!session) return <Redirect href="/" />;
 
   if (membership.isLoading) {
     return <AuthStatus title="Consultando tu membresía" loading />;
@@ -53,8 +53,8 @@ export default function PendingScreen() {
     );
   }
 
-  if (membership.data === 'verified') {
-    return <Redirect href="/(tabs)" />;
+  if (membership.data === 'verified' || membership.data === 'none') {
+    return <Redirect href="/" />;
   }
 
   const isRejected = membership.data === 'rejected';
@@ -70,11 +70,11 @@ export default function PendingScreen() {
       const result = await membership.refetch();
       if (result.error) throw result.error;
       if (result.data !== 'verified') {
-        throw new Error('El código se procesó, pero la cuenta aún no figura como verificada.');
+        throw new Error('El código se procesó, pero la solicitud aún no está aprobada.');
       }
 
       reset();
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (error) {
       setActionError(getErrorMessage(error));
     }
@@ -84,6 +84,7 @@ export default function PendingScreen() {
     setSignOutError(null);
     try {
       await authSignOut();
+      router.replace('/');
     } catch (error) {
       setSignOutError(getErrorMessage(error));
     }

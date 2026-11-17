@@ -3,6 +3,7 @@ import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -20,6 +21,8 @@ import { z } from 'zod';
 
 import { AdminPanel } from '@/features/admin/AdminPanel';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { AuthPage } from '@/features/auth/AuthPage';
+import { useMembership } from '@/features/auth/useMembership';
 import {
   profileFormSchema,
   type ProfileFormInput,
@@ -53,9 +56,11 @@ function deletionErrorMessage(error: unknown): string {
 
 export function ProfileScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { session, signOut } = useAuth();
   const queryClient = useQueryClient();
   const userId = session?.user.id;
+  const sellerStatus = useMembership(userId);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -63,6 +68,8 @@ export function ProfileScreen() {
   const [busyListingId, setBusyListingId] = useState<string | null>(null);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [sellerRequestError, setSellerRequestError] = useState<string | null>(null);
+  const [sellerRequestMessage, setSellerRequestMessage] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: ['own-profile', userId],
@@ -93,7 +100,7 @@ export function ProfileScreen() {
 
   const listingsQuery = useQuery({
     queryKey: ['my-listings', userId],
-    enabled: Boolean(userId),
+    enabled: Boolean(userId && sellerStatus.data === 'verified'),
     queryFn: async (): Promise<MyListing[]> => {
       if (!userId) throw new Error('Inicia sesión para ver tus publicaciones.');
       const { data, error } = await getSupabaseClient()
@@ -239,6 +246,7 @@ export function ProfileScreen() {
     setIsSigningOut(true);
     try {
       await signOut();
+      router.replace('/');
     } catch {
       setSignOutError('No se pudo cerrar sesión. Comprueba tu conexión e inténtalo otra vez.');
     } finally {
@@ -246,7 +254,36 @@ export function ProfileScreen() {
     }
   }
 
-  if (!userId) return null;
+  async function requestSellerStatus() {
+    setSellerRequestError(null);
+    setSellerRequestMessage(null);
+    try {
+      const { error } = await getSupabaseClient().rpc('apply_for_seller');
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['community-membership', userId] });
+      setSellerRequestMessage('Tu solicitud para vender fue enviada. Te avisaremos cuando se revise.');
+    } catch (error) {
+      setSellerRequestError(
+        error instanceof Error ? error.message : 'No se pudo enviar la solicitud. Inténtalo otra vez.'
+      );
+    }
+  }
+
+  if (!userId) {
+    return (
+      <AuthPage
+        title="Tu perfil"
+        subtitle="Inicia sesión o crea una cuenta gratis para guardar tus datos y publicar."
+      >
+        <Button mode="contained" onPress={() => router.push('/sign-up')}>
+          Registrarme
+        </Button>
+        <Button mode="outlined" onPress={() => router.push('/sign-in')}>
+          Ya tengo cuenta
+        </Button>
+      </AuthPage>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -258,6 +295,34 @@ export function ProfileScreen() {
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
           {session?.user.email}
         </Text>
+
+        <Text variant="titleLarge">Cuenta de comprador</Text>
+        {sellerStatus.data === 'verified' ? (
+          <Text variant="bodyMedium">Vendedor aprobado: ya puedes publicar productos.</Text>
+        ) : sellerStatus.data === 'pending' ? (
+          <Text variant="bodyMedium">
+            Tu solicitud para vender está pendiente. Puedes seguir comprando mientras esperas.
+          </Text>
+        ) : (
+          <View style={styles.form}>
+            <Text variant="bodyMedium">
+              Comprar es gratis. Para publicar, solicita la aprobación como vendedor.
+            </Text>
+            <Button mode="outlined" onPress={() => void requestSellerStatus()}>
+              Solicitar ser vendedor
+            </Button>
+          </View>
+        )}
+        {sellerRequestError ? (
+          <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
+            {sellerRequestError}
+          </Text>
+        ) : null}
+        {sellerRequestMessage ? (
+          <Text accessibilityRole="alert" style={{ color: theme.colors.primary }}>
+            {sellerRequestMessage}
+          </Text>
+        ) : null}
 
         <Text variant="titleLarge">Mi perfil</Text>
         {profileQuery.isPending ? (
@@ -348,6 +413,8 @@ export function ProfileScreen() {
           </View>
         )}
 
+        {sellerStatus.data === 'verified' ? (
+          <>
         <Text variant="titleLarge">Mis publicaciones</Text>
         {listingsQuery.isPending ? (
           <ActivityIndicator />
@@ -417,6 +484,8 @@ export function ProfileScreen() {
           <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
             {listingActionError}
           </Text>
+        ) : null}
+          </>
         ) : null}
 
         {userId && adminQuery.data === true ? <AdminPanel /> : null}

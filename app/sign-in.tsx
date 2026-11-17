@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
 import { Button, HelperText, TextInput } from 'react-native-paper';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { AuthPage } from '@/features/auth/AuthPage';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getErrorMessage } from '@/features/auth/errorMessage';
+import { getSafeReturnTo } from '@/features/auth/returnTo';
 import { signInSchema, type SignInValues } from '@/features/auth/authSchemas';
 import { getSupabaseClient } from '@/lib/supabase';
 
 export default function SignInScreen() {
+  const { returnTo: requestedReturnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const returnTo = getSafeReturnTo(requestedReturnTo);
   const { session, isLoading } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -23,7 +26,7 @@ export default function SignInScreen() {
   });
 
   if (isLoading) return null;
-  if (session) return <Redirect href="/" />;
+  if (session) return <Redirect href={returnTo as Href} />;
 
   const onSubmit = async (values: SignInValues) => {
     setServerError(null);
@@ -33,7 +36,7 @@ export default function SignInScreen() {
         password: values.password,
       });
       if (error) throw error;
-      router.replace('/');
+      router.replace(returnTo as Href);
     } catch (error) {
       setServerError(getErrorMessage(error));
     }
@@ -101,7 +104,7 @@ export default function SignInScreen() {
       <Button
         mode="text"
         contentStyle={styles.buttonContent}
-        onPress={() => router.push('/sign-up')}
+        onPress={() => router.push({ pathname: '/sign-up', params: { returnTo } })}
       >
         Crear una cuenta
       </Button>

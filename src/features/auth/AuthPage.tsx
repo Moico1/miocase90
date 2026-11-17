@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SymbolView } from 'expo-symbols';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, useTheme } from 'react-native-paper';
+
+import { BrandLogo } from '@/components/BrandLogo';
 
 type AuthPageProps = {
   title: string;
@@ -27,23 +28,9 @@ export function AuthPage({ title, subtitle, children }: AuthPageProps) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View
-              style={[
-                styles.brandMark,
-                { backgroundColor: theme.colors.primaryContainer },
-              ]}
-            >
-              <SymbolView
-                name={{ ios: 'bag.fill', android: 'shopping_bag', web: 'shopping_bag' }}
-                tintColor={theme.colors.primary}
-                size={38}
-              />
-            </View>
-            <Text variant="headlineMedium" style={[styles.brand, { color: theme.colors.primary }]}>
-              MioCASE
-            </Text>
+            <BrandLogo variant="full" />
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              Ofertas de nuestra comunidad en Yacuiba
+              Bueno, Bonito, Barato · Yacuiba
             </Text>
           </View>
           <View style={styles.form}>
@@ -77,19 +64,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
+    gap: 8,
     marginBottom: 28,
-  },
-  brandMark: {
-    alignItems: 'center',
-    borderRadius: 22,
-    height: 76,
-    justifyContent: 'center',
-    marginBottom: 14,
-    width: 76,
-  },
-  brand: {
-    fontWeight: '800',
-    marginBottom: 4,
   },
   form: {
     alignSelf: 'center',

@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Redirect, router } from 'expo-router';
-import { Button, HelperText, TextInput } from 'react-native-paper';
+import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
+import { Button, HelperText, RadioButton, Text, TextInput } from 'react-native-paper';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { AuthPage } from '@/features/auth/AuthPage';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getErrorMessage } from '@/features/auth/errorMessage';
+import { getSafeReturnTo } from '@/features/auth/returnTo';
 import { signUpSchema, type SignUpValues } from '@/features/auth/authSchemas';
 import { getSupabaseClient } from '@/lib/supabase';
 
 export default function SignUpScreen() {
+  const { returnTo: requestedReturnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const returnTo = getSafeReturnTo(requestedReturnTo);
   const { session, isLoading } = useAuth();
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     control,
@@ -24,25 +28,38 @@ export default function SignUpScreen() {
       email: '',
       password: '',
       passwordConfirmation: '',
+      accountType: 'buyer',
     },
   });
 
   if (isLoading) return null;
-  if (session) return <Redirect href="/" />;
+  if (session && !isCreatingAccount) return <Redirect href={returnTo as Href} />;
 
   const onSubmit = async (values: SignUpValues) => {
     setServerError(null);
+    setIsCreatingAccount(true);
     try {
       const { data, error } = await getSupabaseClient().auth.signUp({
         email: values.email.trim().toLowerCase(),
         password: values.password,
         options: {
-          data: { display_name: values.displayName.trim() },
+          data: {
+            display_name: values.displayName.trim(),
+            account_type: values.accountType,
+          },
         },
       });
       if (error) throw error;
-      router.replace(data.session ? '/' : '/check-email');
+      const destination =
+        values.accountType === 'seller' && returnTo === '/'
+          ? '/pending'
+          : returnTo;
+      router.replace(data.session ? destination as Href : {
+        pathname: '/check-email',
+        params: { returnTo: destination },
+      });
     } catch (error) {
+      setIsCreatingAccount(false);
       setServerError(getErrorMessage(error));
     }
   };
@@ -50,8 +67,19 @@ export default function SignUpScreen() {
   return (
     <AuthPage
       title="Crear cuenta"
-      subtitle="Usa tu correo personal. La pertenencia a la comunidad se verifica por invitación o revisión manual."
+      subtitle="Elige cómo quieres participar. Comprar es gratis; para vender, un administrador debe aprobar tu solicitud."
     >
+      <Text variant="titleMedium">¿Quieres comprar o vender?</Text>
+      <Controller
+        control={control}
+        name="accountType"
+        render={({ field: { onChange, value } }) => (
+          <RadioButton.Group value={value} onValueChange={onChange}>
+            <RadioButton.Item label="Comprar" value="buyer" />
+            <RadioButton.Item label="Vender (requiere aprobación)" value="seller" />
+          </RadioButton.Group>
+        )}
+      />
       <Controller
         control={control}
         name="displayName"
@@ -151,7 +179,7 @@ export default function SignUpScreen() {
       <Button
         mode="text"
         contentStyle={styles.buttonContent}
-        onPress={() => router.replace('/sign-in')}
+        onPress={() => router.replace({ pathname: '/sign-in', params: { returnTo } })}
       >
         Ya tengo cuenta
       </Button>

@@ -2,18 +2,16 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Tabs, useRouter } from 'expo-router';
 import { Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { VerifiedMemberGate } from '@/features/auth/VerifiedMemberGate';
 
 export default function TabLayout() {
   const theme = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const tabs = (
     <Tabs
       tabBar={(props) => {
+        const bottomInset = props.insets.bottom;
+
         function renderTab(routeName: 'index' | 'two') {
           const route = props.state.routes.find((item) => item.name === routeName);
           if (!route) return null;
@@ -68,8 +66,10 @@ export default function TabLayout() {
               {
                 backgroundColor: theme.colors.surface,
                 borderTopColor: theme.colors.outlineVariant,
-                paddingBottom: Math.max(insets.bottom, 8),
-                height: 58 + Math.max(insets.bottom, 8),
+                elevation: 8,
+                height: 64 + bottomInset,
+                paddingBottom: bottomInset,
+                zIndex: 1,
               },
             ]}
           >
@@ -99,13 +99,6 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
-        tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.outlineVariant,
-          height: 58 + Math.max(insets.bottom, 8),
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 6,
-        },
       }}
     >
       <Tabs.Screen
@@ -125,7 +118,7 @@ export default function TabLayout() {
     </Tabs>
   );
 
-  return <VerifiedMemberGate>{tabs}</VerifiedMemberGate>;
+  return tabs;
 }
 
 const styles = StyleSheet.create({

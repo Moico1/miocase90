@@ -7,7 +7,7 @@ import { SymbolView } from 'expo-symbols';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Chip, Searchbar, Text, useTheme } from 'react-native-paper';
 
-import { useAuth } from '@/features/auth/AuthProvider';
+import { BrandLogo } from '@/components/BrandLogo';
 import {
   fetchFeedPage,
   fetchListingCategories,
@@ -19,15 +19,14 @@ import {
 export function FeedScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { session } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [sortOrder, setSortOrder] = useState<'recent' | 'cheapest'>('recent');
 
   const categories = useQuery({
     queryKey: ['listing-categories'],
     queryFn: fetchListingCategories,
-    enabled: Boolean(session?.user.id),
   });
 
   useEffect(() => {
@@ -36,14 +35,14 @@ export function FeedScreen() {
   }, [searchText]);
 
   const feedQuery = useInfiniteQuery({
-    queryKey: ['active-listings', debouncedSearch, categoryId],
+    queryKey: ['active-listings', debouncedSearch, categoryId, sortOrder],
     initialPageParam: null as FeedCursor | null,
-    enabled: Boolean(session?.user.id),
     queryFn: ({ pageParam }) =>
       fetchFeedPage({
         searchText: debouncedSearch,
         categoryId,
         cursor: pageParam,
+        sortOrder,
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -88,6 +87,21 @@ export function FeedScreen() {
           <Text variant="titleLarge" style={[styles.price, { color: theme.colors.primary }]}>
             {formatListingPrice(item.price, item.currency)}
           </Text>
+          {item.previousPrice !== null ? (
+            <View style={styles.offerRow}>
+              <Text variant="bodySmall" style={styles.previousPrice}>
+                {formatListingPrice(item.previousPrice, item.currency)}
+              </Text>
+              <Chip compact selectedColor={theme.colors.onSecondaryContainer} style={{ backgroundColor: theme.colors.secondaryContainer }}>
+                -{Math.round((1 - item.price / item.previousPrice) * 100)}%
+              </Chip>
+            </View>
+          ) : null}
+          {item.status === 'sold' ? (
+            <Chip compact selected>
+              Vendido
+            </Chip>
+          ) : null}
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
             {item.categoryName}
           </Text>
@@ -129,8 +143,6 @@ export function FeedScreen() {
       );
     }
 
-    if (!session?.user.id) return null;
-
     return (
       <View style={styles.state}>
         <Text variant="bodyMedium">
@@ -153,9 +165,12 @@ export function FeedScreen() {
         contentContainerStyle={listings.length ? styles.list : styles.emptyList}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text variant="labelLarge" style={{ color: theme.colors.primary }}>
-              MIOCASE · YACUIBA
-            </Text>
+            <View style={styles.brandHeading}>
+              <BrandLogo variant="compact" />
+              <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
+                YACUIBA · BUENO, BONITO, BARATO
+              </Text>
+            </View>
             <View style={styles.headingRow}>
               <View style={styles.heading}>
                 <Text variant="headlineSmall">Encuentra tu próxima oferta</Text>
@@ -180,6 +195,7 @@ export function FeedScreen() {
             </View>
             <Searchbar
               placeholder="Buscar productos"
+              maxLength={80}
               value={searchText}
               onChangeText={setSearchText}
               accessibilityLabel="Buscar productos por texto"
@@ -216,6 +232,20 @@ export function FeedScreen() {
                 </Chip>
               )}
             />
+            <View style={styles.sortOptions}>
+              <Chip
+                selected={sortOrder === 'recent'}
+                onPress={() => setSortOrder('recent')}
+              >
+                Más recientes
+              </Chip>
+              <Chip
+                selected={sortOrder === 'cheapest'}
+                onPress={() => setSortOrder('cheapest')}
+              >
+                Más baratos
+              </Chip>
+            </View>
           </View>
         }
         ListEmptyComponent={renderEmptyState}
@@ -265,6 +295,22 @@ const styles = StyleSheet.create({
   header: {
     gap: 14,
     padding: 16,
+  },
+  brandHeading: {
+    alignItems: 'flex-start',
+    gap: 3,
+  },
+  sortOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  offerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  previousPrice: {
+    textDecorationLine: 'line-through',
   },
   publishButtonContent: {
     minHeight: 48,
