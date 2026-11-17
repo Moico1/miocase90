@@ -31,6 +31,8 @@ import {
 import { deleteOwnListing } from '@/features/listings/deleteListing';
 import { formatListingPrice } from '@/features/listings/listingQueries';
 import { getSupabaseClient } from '@/lib/supabase';
+import { StoreManager } from '@/features/stores/StoreManager';
+import { WhatsAppVerificationManager } from './WhatsAppVerificationManager';
 
 const myListingSchema = z.object({
   id: z.string().uuid(),
@@ -81,7 +83,7 @@ export function ProfileScreen() {
         client.from('profiles').select('display_name').eq('id', userId).maybeSingle(),
         client
           .from('profile_contacts')
-          .select('whatsapp, show_whatsapp')
+          .select('whatsapp, whatsapp_verified, show_whatsapp')
           .eq('user_id', userId)
           .maybeSingle(),
       ]);
@@ -93,6 +95,7 @@ export function ProfileScreen() {
       return {
         displayName: profileResult.data.display_name,
         whatsapp: contactResult.data?.whatsapp ?? '',
+        whatsappVerified: contactResult.data?.whatsapp_verified ?? false,
         showWhatsapp: contactResult.data?.show_whatsapp ?? false,
       };
     },
@@ -140,7 +143,6 @@ export function ProfileScreen() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       displayName: '',
-      whatsapp: '',
       showWhatsapp: false,
     },
   });
@@ -149,7 +151,6 @@ export function ProfileScreen() {
     if (profileQuery.data) {
       reset({
         displayName: profileQuery.data.displayName,
-        whatsapp: profileQuery.data.whatsapp,
         showWhatsapp: profileQuery.data.showWhatsapp,
       });
     }
@@ -168,8 +169,8 @@ export function ProfileScreen() {
     try {
       const { error } = await getSupabaseClient().rpc('update_my_profile', {
         target_display_name: values.displayName,
-        target_whatsapp: values.whatsapp || null,
-        target_show_whatsapp: values.showWhatsapp,
+        target_whatsapp: profileQuery.data?.whatsapp || null,
+        target_show_whatsapp: values.showWhatsapp && Boolean(profileQuery.data?.whatsappVerified),
       });
       if (error) throw error;
 
@@ -292,6 +293,13 @@ export function ProfileScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text variant="headlineSmall">Mi cuenta</Text>
+        <Button
+          mode="outlined"
+          onPress={() => router.push('/favorites')}
+          style={styles.buttonContent}
+        >
+          Mis favoritos
+        </Button>
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
           {session?.user.email}
         </Text>
@@ -356,27 +364,6 @@ export function ProfileScreen() {
 
             <Controller
               control={control}
-              name="whatsapp"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  label="WhatsApp (opcional)"
-                  mode="outlined"
-                  keyboardType="phone-pad"
-                  placeholder="+591 7XXXXXXX"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={Boolean(errors.whatsapp)}
-                  disabled={isSavingProfile}
-                />
-              )}
-            />
-            <HelperText type="error" visible={Boolean(errors.whatsapp)}>
-              {errors.whatsapp?.message}
-            </HelperText>
-
-            <Controller
-              control={control}
               name="showWhatsapp"
               render={({ field: { onChange, value } }) => (
                 <View style={styles.switchRow}>
@@ -384,11 +371,16 @@ export function ProfileScreen() {
                   <Switch
                     value={value}
                     onValueChange={onChange}
-                    disabled={isSavingProfile}
+                    disabled={isSavingProfile || !profileQuery.data?.whatsappVerified}
                   />
                 </View>
               )}
             />
+            {!profileQuery.data?.whatsappVerified ? (
+              <HelperText type="info" visible>
+                Primero verifica tu número para poder mostrarlo en tus publicaciones.
+              </HelperText>
+            ) : null}
             {profileError ? (
               <Text accessibilityRole="alert" style={{ color: theme.colors.error }}>
                 {profileError}
@@ -415,6 +407,12 @@ export function ProfileScreen() {
 
         {sellerStatus.data === 'verified' ? (
           <>
+        <WhatsAppVerificationManager
+          key={profileQuery.data?.whatsapp ?? 'no-verified-number'}
+          userId={userId}
+          verifiedNumber={profileQuery.data?.whatsappVerified ? profileQuery.data.whatsapp : null}
+        />
+        <StoreManager />
         <Text variant="titleLarge">Mis publicaciones</Text>
         {listingsQuery.isPending ? (
           <ActivityIndicator />

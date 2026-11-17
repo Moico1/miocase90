@@ -21,6 +21,9 @@ const listingRowSchema = z.object({
   created_at: z.string(),
   seller_name: z.string(),
   status: z.enum(['active', 'sold']),
+  store_id: z.string().uuid().nullable(),
+  store_name: z.string(),
+  store_logo_path: z.string().nullable(),
 });
 
 const listingImageSchema = z.object({
@@ -56,6 +59,10 @@ export type ListingCard = {
   createdAt: string;
   sellerName: string;
   status: 'active' | 'sold';
+  storeId: string | null;
+  storeName: string;
+  storeLogoUrl: string | null;
+  isNew: boolean;
   thumbnailUrl: string | null;
 };
 
@@ -112,6 +119,7 @@ export async function fetchFeedPage(options: {
   categoryId: number | null;
   cursor: FeedCursor | null;
   sortOrder: 'recent' | 'cheapest';
+  followedOnly?: boolean;
 }): Promise<FeedPage> {
   const { data, error } = await getSupabaseClient().rpc('search_active_listings', {
     search_text: options.searchText.trim() || null,
@@ -121,6 +129,7 @@ export async function fetchFeedPage(options: {
     cursor_price: options.cursor?.price ?? null,
     page_size: PAGE_SIZE + 1,
     sort_order: options.sortOrder,
+    followed_only: options.followedOnly ?? false,
   });
 
   if (error) throw error;
@@ -142,6 +151,7 @@ export async function fetchFeedPage(options: {
   const thumbnailByListingId = new Map(
     firstImages.map((image) => [image.listing_id, signedUrls.get(image.path) ?? null])
   );
+  const now = Date.now();
   const items = visibleRows.map((row) => ({
     id: row.id,
     title: row.title,
@@ -154,6 +164,12 @@ export async function fetchFeedPage(options: {
     createdAt: row.created_at,
     sellerName: row.seller_name,
     status: row.status,
+    storeId: row.store_id,
+    storeName: row.store_name,
+    storeLogoUrl: row.store_logo_path
+      ? getSupabaseClient().storage.from('miocase-store-logos').getPublicUrl(row.store_logo_path).data.publicUrl
+      : null,
+    isNew: now - new Date(row.created_at).getTime() < 3 * 24 * 60 * 60 * 1000,
     thumbnailUrl: thumbnailByListingId.get(row.id) ?? null,
   }));
   const lastItem = visibleRows[visibleRows.length - 1];
@@ -191,6 +207,7 @@ export async function fetchListingDetail(listingId: string): Promise<ListingDeta
   if (imageError) throw imageError;
   const images = parseResponse(z.array(listingImageSchema), imageData, 'las fotos');
   const signedUrls = await createSignedUrlMap(images.map((image) => image.path));
+  const now = Date.now();
 
   return {
     id: listingDataRow.id,
@@ -204,6 +221,12 @@ export async function fetchListingDetail(listingId: string): Promise<ListingDeta
     createdAt: listingDataRow.created_at,
     sellerName: listingDataRow.seller_name,
     status: listingDataRow.status,
+    storeId: listingDataRow.store_id,
+    storeName: listingDataRow.store_name,
+    storeLogoUrl: listingDataRow.store_logo_path
+      ? client.storage.from('miocase-store-logos').getPublicUrl(listingDataRow.store_logo_path).data.publicUrl
+      : null,
+    isNew: now - new Date(listingDataRow.created_at).getTime() < 3 * 24 * 60 * 60 * 1000,
     isOwnListing: listingDataRow.is_own_listing,
     photos: images.map((image) => {
       const url = signedUrls.get(image.path);

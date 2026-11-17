@@ -48,6 +48,8 @@ La URL y la clave `anon`/publishable se entregan al cliente; no son una clave de
 | `/(tabs)/two` | `app/(tabs)/two.tsx` | Perfil, publicaciones propias y administración (envuelve `ProfileScreen`). |
 | `/publish` | `app/publish.tsx` | Protege la ruta y presenta `PublishListingScreen`. |
 | `/listing/[id]` | `app/listing/[id].tsx` | Valida el parámetro y muestra el detalle público; las acciones personales solicitan cuenta y retoman la acción al volver. |
+| `/store/[id]` | `app/store/[id].tsx` | Página pública de una tienda aprobada, con productos, reseñas y seguimiento. |
+| `/favorites` | `app/favorites.tsx` | Lista privada de productos guardados por la cuenta activa. |
 | Not-found y HTML | `app/+not-found.tsx`, `app/+html.tsx` | Fallback de ruta y shell HTML exclusivo de web. |
 
 `app/_layout.tsx` monta los proveedores globales: área segura, tema Paper, estado, React Query y autenticación. El `QueryClient` usa `staleTime` de 30 segundos y un reintento por defecto. El layout raíz también declara las pantallas del Stack.
@@ -61,6 +63,9 @@ La URL y la clave `anon`/publishable se entregan al cliente; no son una clave de
 - `src/features/profile/`: perfil y validación de datos de perfil.
 - `src/features/admin/`: panel, lectura de cola de miembros/reportes y decisiones administrativas.
 - `src/features/reports/`: diálogo para presentar un reporte de publicación.
+- `src/features/stores/`: consultas públicas seguras, edición de tienda, página pública y favoritos.
+- `src/features/profile/WhatsAppVerificationManager.tsx`: solicitud, ingreso de código y estado de verificación del número.
+- `src/features/listings/ListingComments.tsx`: preguntas, respuestas, reportes y bloqueo de autores.
 
 ### Interfaz y recursos
 
@@ -88,6 +93,8 @@ El cliente usa `VerifiedMemberGate` para UX y navegación. Las políticas RLS y 
 
 Seleccionar una tarjeta abre `/listing/[id]`. `fetchListingDetail` lee una publicación pública, categoría, fotos y nombre de tienda; nunca recibe WhatsApp ni correo. `request_whatsapp_contact` devuelve el enlace `wa.me` únicamente a una sesión autenticada y registra el evento con un límite de 30 contactos por usuario y día. `app_settings.require_account_to_contact` se inicializa en `true`; cambiarlo no habilita contacto anónimo, porque el endpoint entrega el enlace solo a sesiones autenticadas. Un comprador puede reportar publicaciones ajenas, guardar favoritos y calificar.
 
+Las tarjetas muestran el nombre/logo de tienda y las etiquetas Nuevo, Oferta y Vendido. El inicio presenta tiendas destacadas, ordenamiento por precio/fecha y el filtro de tiendas seguidas para cuentas activas. La página `/store/[id]` solo entrega información de tiendas visibles con vendedor aprobado; no expone el UUID del perfil dueño. Las reseñas se pueden editar (una por cuenta y tienda), y el promedio se calcula en la base. Los comentarios de productos permiten respuestas del vendedor, bloquean enlaces y limitan a cinco por cuenta por hora. La página `/favorites` presenta los productos guardados. Los enlaces compartidos usan el esquema `miocase`.
+
 ### Publicar y administrar productos
 
 1. El formulario verifica que el vendedor esté aprobado, además de categoría y datos mediante Zod.
@@ -98,7 +105,7 @@ Seleccionar una tarjeta abre `/listing/[id]`. `fetchListingDetail` lee una publi
 
 ### Perfil y moderación
 
-El perfil edita nombre y WhatsApp mediante `update_my_profile`, consulta sus publicaciones y ofrece cierre de sesión. El backend normaliza y valida WhatsApp en formato internacional. El panel administrativo solo aparece si `is_admin()` lo confirma y permite revisar membresías, generar/copiar invitaciones y resolver reportes. Las decisiones de moderación se ejecutan en funciones SQL y quedan en el registro `moderation_actions`.
+El perfil edita su nombre mediante `update_my_profile`, consulta sus publicaciones y ofrece cierre de sesión. Vendedores aprobados solicitan verificar su WhatsApp; administración abre el chat, genera un código de cuatro dígitos y lo envía por WhatsApp externo. El código solo se conserva como hash con salt, vence en 24 horas y permite cinco intentos. El perfil solo puede activar la visibilidad después de verificar el número; la base de datos bloquea cambios directos y números verificados duplicados. Vendedores aprobados también pueden editar la tienda, incluido un logo JPEG comprimido a 512 KiB o menos. El panel administrativo solo aparece si `is_admin()` lo confirma y permite revisar membresías, códigos de WhatsApp, invitaciones y reportes de productos y contenido social. La emisión queda en `moderation_actions`.
 
 ## Modelo de datos y controles
 
@@ -107,14 +114,16 @@ Las migraciones definen:
 - `profiles`: identidad pública/nombre, rol de cuenta comprador/admin y estado independiente del vendedor (`pending`, `approved`, `rejected` o sin solicitud).
 - `community_memberships`: estado `pending`, `verified` o `rejected`, junto con datos de verificación.
 - `membership_invites`: hash, emisor, vencimiento y canje de invitaciones.
-- `profile_contacts`: WhatsApp y elección de visibilidad.
+- `profile_contacts`: WhatsApp, su estado de verificación y elección de visibilidad.
+- `whatsapp_verifications`: solicitudes de verificación, hash/salt del código, intentos, estado y vencimiento; sin códigos en texto claro.
 - `categories`: catálogo de categorías.
 - `listings`: vendedor, categoría, título, descripción, precio, moneda y estado (`draft`, `active`, `sold`, `removed`).
 - `listing_images`: ruta privada y orden de hasta cinco imágenes por publicación.
 - `reports`: motivo y estado; una persona solo puede reportar una vez cada publicación.
+- `stores`, `store_reviews`, `listing_comments`, `follows`, `user_blocks` y `content_reports`: tiendas públicas seguras, reseñas, comentarios/respuestas, seguimiento, bloqueo y reportes sociales.
 - `moderation_actions`: auditoría de decisiones administrativas.
 
-RLS está habilitado para las tablas de aplicación. `anon` no tiene permisos de lectura o escritura directa en tablas privadas; el catálogo solo se expone mediante RPCs `SECURITY DEFINER` con `search_path` vacío y permisos explícitos. Las operaciones sensibles de publicación, contacto, estado, perfil y moderación usan RPC con comprobaciones en backend. El bucket de fotos es privado, limita el tamaño a 512 KiB y solo admite JPEG/WebP; las fotos públicas requieren publicación activa/vendida, vendedor aprobado y ruta nueva sin UUID de auth.
+RLS está habilitado para las tablas de aplicación. `anon` no tiene permisos directos sobre las tablas sociales ni sobre las verificaciones de WhatsApp; los datos públicos se consultan mediante RPCs `SECURITY DEFINER` con `search_path` vacío, permisos explícitos y límites de página. El cliente no puede escribir `profile_contacts.whatsapp_verified`; la actualización del número ocurre únicamente en `verify_whatsapp_code`. Las operaciones sensibles de tienda, reseña, comentario, seguimiento, reporte, verificación y moderación se comprueban en backend. Los logos usan el bucket público separado `miocase-store-logos`; las funciones de sus políticas verifican las tiendas aprobadas sin conceder a `anon` acceso a tablas. `supabase/tests/anon_access.sql` comprueba privilegios, políticas de escritura en Storage y límites de consultas públicas.
 
 ## Migraciones de Supabase
 
@@ -126,6 +135,8 @@ Aplicar cronológicamente:
 4. `20261114172000_add_searchable_listing_feed.sql`: RPC de búsqueda paginada.
 5. `20261114190000_complete_mvp_account_moderation.sql`: edición de perfil, moderación, eliminación y auditoría.
 6. `20261115220000_public_browsing_and_seller_roles.sql`: catálogo público controlado, separación de rol comprador/estado vendedor, favoritos, calificaciones, contacto limitado y precio anterior.
+7. `20261116210000_store_profiles_and_social_features.sql`: perfiles de tienda y logos, reseñas, comentarios, seguimiento, bloqueos, favoritos privados y moderación social.
+8. `20261116230000_whatsapp_phone_verification.sql`: verificación con códigos de cuatro dígitos, límite de intentos, vigencia de 24 horas y restricción de contacto a números verificados.
 
 Comprobar el acceso anónimo y los límites con `supabase/tests/anon_access.sql` desde SQL Editor después de aplicar las migraciones.
 

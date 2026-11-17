@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image as ExpoImage } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
@@ -20,6 +21,7 @@ import {
 import { AccountRequiredSheet } from '@/features/auth/AccountRequiredSheet';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ReportDialog } from '@/features/reports/ReportDialog';
+import { ListingComments } from './ListingComments';
 import { getSupabaseClient } from '@/lib/supabase';
 import {
   fetchListingDetail,
@@ -168,6 +170,17 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
     setIsRatingVisible(true);
   }
 
+  async function shareListing() {
+    try {
+      const url = ExpoLinking.createURL(`/listing/${listingId}`, { scheme: 'miocase' });
+      await Share.share({ message: `Mira ${product.title} en Mío CASE: ${url}` });
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'No se pudo compartir el producto.'
+      );
+    }
+  }
+
   async function submitRating() {
     if (!session?.user.id) return;
     setRatingMessage(null);
@@ -255,6 +268,7 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
   }
 
   const product = detail.data;
+  const storeId = product.storeId;
   const canShowListingActions = !session?.user.id || !product.isOwnListing;
 
   return (
@@ -266,6 +280,9 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
           accessibilityLabel="Volver a las ofertas"
         >
           Volver
+        </Button>
+        <Button mode="outlined" onPress={() => void shareListing()}>
+          Compartir producto
         </Button>
         {product.photos.length > 0 ? (
           <ScrollView
@@ -317,14 +334,35 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
           </View>
         ) : null}
         {product.status === 'sold' ? <Chip compact>Vendido</Chip> : null}
+        {product.isNew ? <Chip compact>Nuevo</Chip> : null}
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
           Categoría: {product.categoryName}
         </Text>
         <Text variant="titleMedium">Descripción</Text>
         <Text variant="bodyLarge">{product.description || 'El vendedor no agregó una descripción.'}</Text>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          Publicado por {product.sellerName}
-        </Text>
+        {storeId ? (
+          <Pressable
+            onPress={() => router.push({ pathname: '/store/[id]', params: { id: storeId } })}
+            style={styles.storeLink}
+          >
+            {product.storeLogoUrl ? (
+              <ExpoImage
+                source={{ uri: product.storeLogoUrl }}
+                style={styles.storeLogo}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                accessibilityLabel={`Logo de ${product.storeName}`}
+              />
+            ) : null}
+            <Text variant="bodyMedium" style={{ color: theme.colors.primary }}>
+              Tienda: {product.storeName}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            Publicado por {product.sellerName}
+          </Text>
+        )}
         <View
           style={[
             styles.safetyBox,
@@ -391,6 +429,7 @@ export function ListingDetailScreen({ listingId }: { listingId: string }) {
         {reportSent ? (
           <Text variant="bodyMedium">Gracias. El reporte fue enviado a moderación.</Text>
         ) : null}
+        <ListingComments listingId={product.id} isOwnListing={product.isOwnListing} />
         {session?.user.id && !product.isOwnListing ? (
           <ReportDialog
             listingId={product.id}
@@ -506,6 +545,17 @@ const styles = StyleSheet.create({
   },
   whatsappButton: {
     minHeight: 54,
+  },
+  storeLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 6,
+  },
+  storeLogo: {
+    borderRadius: 16,
+    height: 32,
+    width: 32,
   },
   state: {
     alignItems: 'center',

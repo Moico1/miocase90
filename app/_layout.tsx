@@ -73,6 +73,8 @@ function RootNavigator({ theme }: { theme: typeof miocaseLightTheme }) {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="publish" />
       <Stack.Screen name="listing/[id]" />
+      <Stack.Screen name="store/[id]" />
+      <Stack.Screen name="favorites" />
     </Stack>
   );
 }

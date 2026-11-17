@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
@@ -8,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Chip, Searchbar, Text, useTheme } from 'react-native-paper';
 
 import { BrandLogo } from '@/components/BrandLogo';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { fetchFeaturedStores, getStoreLogoUrl } from '@/features/stores/storeQueries';
 import {
   fetchFeedPage,
   fetchListingCategories,
@@ -19,14 +21,20 @@ import {
 export function FeedScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { session } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<'recent' | 'cheapest'>('recent');
+  const [followedOnly, setFollowedOnly] = useState(false);
 
   const categories = useQuery({
     queryKey: ['listing-categories'],
     queryFn: fetchListingCategories,
+  });
+  const featuredStores = useQuery({
+    queryKey: ['featured-stores'],
+    queryFn: fetchFeaturedStores,
   });
 
   useEffect(() => {
@@ -35,7 +43,7 @@ export function FeedScreen() {
   }, [searchText]);
 
   const feedQuery = useInfiniteQuery({
-    queryKey: ['active-listings', debouncedSearch, categoryId, sortOrder],
+    queryKey: ['active-listings', session?.user.id, debouncedSearch, categoryId, sortOrder, followedOnly],
     initialPageParam: null as FeedCursor | null,
     queryFn: ({ pageParam }) =>
       fetchFeedPage({
@@ -43,6 +51,7 @@ export function FeedScreen() {
         categoryId,
         cursor: pageParam,
         sortOrder,
+        followedOnly: Boolean(session?.user.id && followedOnly),
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -58,6 +67,7 @@ export function FeedScreen() {
   }
 
   function renderListing({ item }: { item: ListingCard }) {
+    const storeId = item.storeId;
     return (
       <Card
         mode="outlined"
@@ -102,9 +112,29 @@ export function FeedScreen() {
               Vendido
             </Chip>
           ) : null}
+          {item.isNew ? <Chip compact>Nuevo</Chip> : null}
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
             {item.categoryName}
           </Text>
+          {storeId ? (
+            <Pressable
+              onPress={(event) => {
+                event.stopPropagation();
+                router.push({ pathname: '/store/[id]', params: { id: storeId } });
+              }}
+              style={styles.storeLink}
+            >
+              {item.storeLogoUrl ? (
+                <ExpoImage
+                  source={{ uri: item.storeLogoUrl }}
+                  style={styles.storeLogo}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                />
+              ) : null}
+              <Text variant="labelSmall" numberOfLines={1}>{item.storeName}</Text>
+            </Pressable>
+          ) : null}
         </Card.Content>
       </Card>
     );
@@ -234,6 +264,47 @@ export function FeedScreen() {
             />
             <View style={styles.sortOptions}>
               <Chip
+                selected={Boolean(session?.user.id && followedOnly)}
+                disabled={!session?.user.id}
+                onPress={() => setFollowedOnly((current) => !current)}
+              >
+                Tiendas que sigo
+              </Chip>
+            </View>
+            {featuredStores.data?.length ? (
+              <View style={styles.featuredSection}>
+                <Text variant="titleMedium">Tiendas destacadas</Text>
+                <FlatList
+                  horizontal
+                  data={featuredStores.data}
+                  keyExtractor={(store) => store.id}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipList}
+                  renderItem={({ item: store }) => {
+                    const logoUrl = getStoreLogoUrl(store.logo_path);
+                    return (
+                      <Pressable
+                        onPress={() => router.push({ pathname: '/store/[id]', params: { id: store.id } })}
+                        style={[styles.featuredStore, { backgroundColor: theme.colors.surface }]}
+                      >
+                        {logoUrl ? (
+                          <ExpoImage
+                            source={{ uri: logoUrl }}
+                            style={styles.featuredLogo}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                          />
+                        ) : null}
+                        <Text variant="labelMedium" numberOfLines={1}>{store.name}</Text>
+                        <Text variant="labelSmall">★ {store.rating_average.toFixed(1)}</Text>
+                      </Pressable>
+                    );
+                  }}
+                />
+              </View>
+            ) : null}
+            <View style={styles.sortOptions}>
+              <Chip
                 selected={sortOrder === 'recent'}
                 onPress={() => setSortOrder('recent')}
               >
@@ -303,6 +374,32 @@ const styles = StyleSheet.create({
   sortOptions: {
     flexDirection: 'row',
     gap: 8,
+  },
+  featuredSection: {
+    gap: 8,
+  },
+  featuredStore: {
+    alignItems: 'center',
+    borderRadius: 12,
+    gap: 4,
+    minWidth: 100,
+    padding: 10,
+  },
+  featuredLogo: {
+    borderRadius: 24,
+    height: 48,
+    width: 48,
+  },
+  storeLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingTop: 4,
+  },
+  storeLogo: {
+    borderRadius: 12,
+    height: 24,
+    width: 24,
   },
   offerRow: {
     alignItems: 'center',

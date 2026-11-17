@@ -21,7 +21,14 @@ begin
     'public.contact_events',
     'public.listing_favorites',
     'public.listing_ratings',
-    'public.app_settings'
+    'public.app_settings',
+    'public.stores',
+    'public.store_reviews',
+    'public.listing_comments',
+    'public.follows',
+    'public.user_blocks',
+    'public.content_reports',
+    'public.whatsapp_verifications'
   ]
   loop
     if has_table_privilege('anon', protected_table, 'select')
@@ -31,6 +38,46 @@ begin
       raise exception 'anon tiene privilegios inesperados en %', protected_table;
     end if;
   end loop;
+
+  if has_function_privilege('anon', 'public.get_my_store_review(uuid)', 'execute')
+    or has_function_privilege('anon', 'public.upsert_my_store(uuid,text,text,text,text,text)', 'execute')
+    or has_function_privilege('anon', 'public.set_my_store_logo(uuid,text)', 'execute')
+    or has_function_privilege('anon', 'public.submit_store_review(uuid,smallint,text)', 'execute')
+    or has_function_privilege('anon', 'public.toggle_store_follow(uuid,boolean)', 'execute')
+    or has_function_privilege('anon', 'public.add_listing_comment(uuid,text,uuid)', 'execute')
+    or has_function_privilege('anon', 'public.set_comment_author_block(uuid,boolean)', 'execute')
+    or has_function_privilege('anon', 'public.create_content_report(text,uuid,text)', 'execute')
+    or has_function_privilege('anon', 'public.get_my_favorite_listings(integer)', 'execute')
+    or has_function_privilege('anon', 'public.request_whatsapp_verification(text)', 'execute')
+    or has_function_privilege('anon', 'public.admin_issue_whatsapp_code(uuid)', 'execute')
+    or has_function_privilege('anon', 'public.verify_whatsapp_code(text)', 'execute')
+    or has_function_privilege('anon', 'public.get_my_whatsapp_verification()', 'execute')
+    or has_function_privilege('anon', 'public.get_admin_whatsapp_verifications()', 'execute') then
+    raise exception 'anon tiene acceso a una función privada';
+  end if;
+
+  if has_column_privilege(
+      'authenticated',
+      'public.profile_contacts',
+      'whatsapp_verified',
+      'INSERT'
+    )
+    or has_column_privilege(
+      'authenticated',
+      'public.profile_contacts',
+      'whatsapp_verified',
+      'UPDATE'
+    ) then
+    raise exception 'authenticated puede modificar el estado de verificación de WhatsApp';
+  end if;
+  if has_table_privilege('authenticated', 'public.profile_contacts', 'insert')
+    or has_table_privilege('authenticated', 'public.profile_contacts', 'update')
+    or has_column_privilege('authenticated', 'public.profile_contacts', 'whatsapp', 'INSERT')
+    or has_column_privilege('authenticated', 'public.profile_contacts', 'whatsapp', 'UPDATE')
+    or has_column_privilege('authenticated', 'public.profile_contacts', 'show_whatsapp', 'INSERT')
+    or has_column_privilege('authenticated', 'public.profile_contacts', 'show_whatsapp', 'UPDATE') then
+    raise exception 'authenticated puede cambiar WhatsApp sin pasar por las funciones seguras';
+  end if;
 
   if exists (
     select 1
@@ -55,6 +102,36 @@ begin
   from public.get_public_listing_images(array[]::uuid[]);
   if anon_rows <> 0 then
     raise exception 'La consulta de fotos vacía devolvió filas';
+  end if;
+
+  select count(*) into anon_rows
+  from public.get_public_store('00000000-0000-0000-0000-000000000000'::uuid);
+  if anon_rows <> 0 then
+    raise exception 'La consulta pública devolvió una tienda inexistente';
+  end if;
+
+  select count(*) into anon_rows
+  from public.get_public_store_listings('00000000-0000-0000-0000-000000000000'::uuid, 20);
+  if anon_rows <> 0 then
+    raise exception 'La consulta pública devolvió productos de una tienda inexistente';
+  end if;
+
+  select count(*) into anon_rows
+  from public.get_public_store_reviews('00000000-0000-0000-0000-000000000000'::uuid, 20);
+  if anon_rows <> 0 then
+    raise exception 'La consulta pública devolvió reseñas de una tienda inexistente';
+  end if;
+
+  select count(*) into anon_rows
+  from public.get_public_listing_comments('00000000-0000-0000-0000-000000000000'::uuid, 50);
+  if anon_rows <> 0 then
+    raise exception 'La consulta pública devolvió comentarios de una publicación inexistente';
+  end if;
+
+  select count(*) into anon_rows
+  from public.get_featured_stores(10);
+  if anon_rows > 10 then
+    raise exception 'La consulta de tiendas destacadas excedió el límite';
   end if;
 
   select count(*) into anon_rows
